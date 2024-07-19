@@ -5,14 +5,8 @@ __title__ = "FLS Doors Validator"
 __author__ = "prajwalbkumar"
 
 # Imports
-from Autodesk.Revit.DB import (
-    FilteredElementCollector, # Used for Collecting elements from the Revit Doc
-    BuiltInCategory, # Finds all the built in Category
-    Transaction, # Class to do changes in the Project
-    UnitUtils, # Changing units to and from Internal Units in Feet and Inches
-    BuiltInParameterGroup, # Class to get the Parameter Groups in the Project
-    UnitTypeId, # Class that Converts English Units to Revit Unit Types
-)
+from Autodesk.Revit.DB import *
+
 from pyrevit import revit, forms, script
 import csv 
 import os
@@ -179,7 +173,8 @@ app.SharedParametersFilename = original_shared_file
 
 passed_doors = 0
 total_doors = len(door_collector)
-
+t = Transaction(doc, "Find Failed Doors")
+t.Start()
 for door in door_collector:
     symbol = door.Symbol
     error_message = "Error: "
@@ -247,5 +242,33 @@ for door in door_collector:
     print(door.LookupParameter("Mark").AsString())
     print("{} \n".format(error_message))
 
-    # Set the shared parameter to the error message
-    # door.LookupParameter("FLS_Comments").Set(error_message)
+    door.LookupParameter("FLS_Comment").Set(error_message)
+
+t.Commit()
+
+# Start a transaction
+t = Transaction(doc, "Create Schedule")
+t.Start()
+
+# Get Door Category
+door_category_id = Category.GetCategory(doc, BuiltInCategory.OST_Doors).Id
+
+# Create a schedule for the Door category
+view_schedule = ViewSchedule.CreateSchedule(doc, door_category_id)
+
+# Get all fields that can be added to the schedule
+schedulable_fields = view_schedule.Definition.GetSchedulableFields()
+
+# Add specific fields to the schedule
+for field in schedulable_fields:
+    if field.GetName(doc) == "FLS_Comment":
+        schedule_field = view_schedule.Definition.AddField(field)
+        schedule_filter = ScheduleFilter(schedule_field.FieldId, ScheduleFilterType.Contains, "Error")
+        view_schedule.Definition.AddFilter(schedule_filter)  # Add the filter to the schedule
+        continue
+    if field.GetName(doc) == "Mark":
+        schedule_field = view_schedule.Definition.AddField(field)
+        continue
+
+# Commit the transaction
+t.Commit()
