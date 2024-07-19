@@ -15,7 +15,9 @@ from Autodesk.Revit.DB import (
 )
 from pyrevit import revit, forms, script
 import csv 
+import os
 
+script_dir = os.path.dirname(__file__)
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
@@ -50,7 +52,9 @@ def doors_in_document():
 
 # Definition to extract data from the CSV File
 def code_csv_reader():
-    file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
+    csv_filename = "FLS Door Codes.csv"
+    file = os.path.join(script_dir, csv_filename) 
+    # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
     with open(file, "r") as csv_file:
         csv_reader = csv.DictReader(csv_file)
 
@@ -139,20 +143,21 @@ door_category = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Doors) # Re
 category_set = app.Create.NewCategorySet() # Creates a Category Set (Group of Categories) to perform function on them. This is an empty Category Set now
 category_set.Insert(door_category)
 
+shared_parameter_file_name = "DoorAutomationSharedParameter.txt"
+shared_parameter_file_path = os.path.join(script_dir, shared_parameter_file_name) 
 original_shared_file = r"K:\BIM\2021\Revit\Dar\Shared_txt_files\All Trades-Shared Parameters.txt"
-temp_file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Automation Shared Parameters.txt"
 
-app.SharedParametersFilename = temp_file # Give the path to the Shared Parameter File
+app.SharedParametersFilename = shared_parameter_file_path # Give the path to the Shared Parameter File
 shared_parameter_file = app.OpenSharedParameterFile() # Access the Shared Parameter File
 # Returns a DefinitionFile 
 
 if shared_parameter_file is None:
     raise ValueError("Shared parameter file not found")
 
-group = shared_parameter_file.Groups.get_Item("Automation_Door") # Retrieve a specific Parameter Group
+group = shared_parameter_file.Groups.get_Item("Door") # Retrieve a specific Parameter Group
 
 if group is None:
-    raise ValueError("Group 'Automation_Door' not found in shared parameter file")
+    raise ValueError("Group 'Door' not found in shared parameter file")
 
 external_definition = group.Definitions.get_Item("FLS_Comment")
 if external_definition is None:
@@ -243,4 +248,4 @@ for door in door_collector:
     print("{} \n".format(error_message))
 
     # Set the shared parameter to the error message
-    door.LookupParameter("FLS_Comments").Set(error_message)
+    # door.LookupParameter("FLS_Comments").Set(error_message)
