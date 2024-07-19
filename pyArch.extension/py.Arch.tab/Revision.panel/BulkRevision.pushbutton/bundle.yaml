@@ -1,0 +1,10 @@
+title: Bulk Revision Tool
+
+tootltip: >-
+  Applies a selected revision to selected sheets.
+
+  Tip: Try selecting the sheets and then running the plugin.
+
+  Shift + Click: Removes revisions instead from the selected sheets. 
+
+author: prajwalbkumar
