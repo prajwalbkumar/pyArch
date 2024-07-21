@@ -6,12 +6,13 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-
+from Autodesk.Revit.UI import UIDocument
 from pyrevit import revit, forms, script
 import csv 
 import os
 
 script_dir = os.path.dirname(__file__)
+ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
@@ -157,6 +158,8 @@ external_definition = group.Definitions.get_Item("FLS_Comment")
 if external_definition is None:
     raise ValueError("Definition 'FLS_Comment' not found in shared parameter file")
 
+external_definition.HideWhenNoValue = True
+
 t = Transaction(doc, "Create Shared Parameter")
 t.Start()
 
@@ -201,12 +204,12 @@ for door in door_collector:
         if symbol.LookupParameter("Equal_Leaves").AsInteger():
             door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
             door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
+            no_of_leaves = symbol.LookupParameter("Leaf_Number").AsInteger()
+            if not ((door_width / no_of_leaves) > min_double_leaf):
+                error_message += "The Leaf Width should be larger than " + str(min_double_leaf) + ". "
 
-            if not ((door_width / 2) > min_double_leaf):
-                error_message += "The Door Width should be larger than " + str(min_double_leaf) + ". "
-
-            if not ((door_width / 2) < max_double_leaf):
-                error_message += "The Door Width should be smaller than " + str(max_double_leaf) + ". "
+            if not ((door_width / no_of_leaves) < max_double_leaf):
+                error_message += "The Leaf Width should be smaller than " + str(max_double_leaf) + ". "
 
             if not (door_height > min_height):
                 error_message += "The Door Height should be larger than " + str(min_height) + ". "
@@ -247,6 +250,8 @@ for door in door_collector:
 t.Commit()
 
 # Start a transaction
+
+# ToDO: Create a check if the Schedule exists already, if yes, ask the user to run the Purge Validator Tool.
 t = Transaction(doc, "Create Schedule")
 t.Start()
 
@@ -255,6 +260,7 @@ door_category_id = Category.GetCategory(doc, BuiltInCategory.OST_Doors).Id
 
 # Create a schedule for the Door category
 view_schedule = ViewSchedule.CreateSchedule(doc, door_category_id)
+view_schedule.Name = "Failed Doors Schedule"
 
 # Get all fields that can be added to the schedule
 schedulable_fields = view_schedule.Definition.GetSchedulableFields()
@@ -272,3 +278,6 @@ for field in schedulable_fields:
 
 # Commit the transaction
 t.Commit()
+
+# Set the Active View to the Created Schedule
+ui_doc.ActiveView = view_schedule
