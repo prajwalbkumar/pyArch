@@ -57,4 +57,3 @@ for view in views:
         doc.Delete(view.Id)
         t.Commit()
         break
-
