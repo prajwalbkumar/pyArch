@@ -47,52 +47,54 @@ def doors_in_document():
 
 # Definition to extract data from the CSV File
 def code_csv_reader():
-    csv_filename = "FLS Door Codes.csv"
-    file = os.path.join(script_dir, csv_filename) 
-    # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
-    with open(file, "r") as csv_file:
-        csv_reader = csv.DictReader(csv_file)
+    try:
+        csv_filename = "FLS Door Codes.csv"
+        file = os.path.join(script_dir, csv_filename) 
+        # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
+        with open(file, "r") as csv_file:
+            csv_reader = csv.DictReader(csv_file)
 
-        code = []
-        min_single_leaf = []
-        min_unq_main_leaf = []
-        min_unq_side_leaf = []
-        min_double_leaf = []
-        max_single_leaf = []
-        max_unq_main_leaf = []
-        max_unq_side_leaf = []
-        max_double_leaf = []
-        min_height = []
+            code = []
+            min_single_leaf = []
+            min_unq_main_leaf = []
+            min_unq_side_leaf = []
+            min_double_leaf = []
+            max_single_leaf = []
+            max_unq_main_leaf = []
+            max_unq_side_leaf = []
+            max_double_leaf = []
+            min_height = []
 
-        for row in csv_reader:
-            code.append(row["CODE"])
-            min_single_leaf.append(row["MIN SINGLE LEAF"])
-            min_unq_main_leaf.append(row["MIN UNQ MAIN LEAF"])
-            min_unq_side_leaf.append(row["MIN UNQ SIDE LEAF"])
-            min_double_leaf.append(row["MIN DOUBLE LEAF"])
-            max_single_leaf.append(row["MAX SINGLE LEAF"])
-            max_unq_main_leaf.append(row["MAX UNQ MAIN LEAF"])
-            max_unq_side_leaf.append(row["MAX UNQ SIDE LEAF"])
-            max_double_leaf.append(row["MAX DOUBLE LEAF"])
-            min_height.append(row["MIN HEIGHT"])
+            for row in csv_reader:
+                code.append(row["CODE"])
+                min_single_leaf.append(row["MIN SINGLE LEAF"])
+                min_unq_main_leaf.append(row["MIN UNQ MAIN LEAF"])
+                min_unq_side_leaf.append(row["MIN UNQ SIDE LEAF"])
+                min_double_leaf.append(row["MIN DOUBLE LEAF"])
+                max_single_leaf.append(row["MAX SINGLE LEAF"])
+                max_unq_main_leaf.append(row["MAX UNQ MAIN LEAF"])
+                max_unq_side_leaf.append(row["MAX UNQ SIDE LEAF"])
+                max_double_leaf.append(row["MAX DOUBLE LEAF"])
+                min_height.append(row["MIN HEIGHT"])
 
-        return (
-            code,
-            min_single_leaf,
-            min_unq_main_leaf,
-            min_unq_side_leaf,
-            min_double_leaf,
-            max_single_leaf,
-            max_unq_main_leaf,
-            max_unq_side_leaf,
-            max_double_leaf,
-            min_height,
-        )
+            return (
+                code,
+                min_single_leaf,
+                min_unq_main_leaf,
+                min_unq_side_leaf,
+                min_double_leaf,
+                max_single_leaf,
+                max_unq_main_leaf,
+                max_unq_side_leaf,
+                max_double_leaf,
+                min_height,
+            )
+    except:
+        forms.alert("CSV Not Found - Contact the Author to Troubleshoot!", title='Script Cancelled')
+        script.exit()
 
 
 # MAIN SCRIPT
-
-# To. DO. : Consider adding error handling for cases where the CSV file cannot be read
 (
     code,
     min_single_leaf,
@@ -249,9 +251,20 @@ for door in door_collector:
 
 t.Commit()
 
-# Start a transaction
+# Find all the Schedule Views
+views = (FilteredElementCollector(doc)
+         .OfClass(ViewSchedule)
+         .WhereElementIsNotElementType()
+         .ToElements())
 
-# ToDO: Create a check if the Schedule exists already, if yes, ask the user to run the Purge Validator Tool.
+# Find the View that Equals to "Failed Doors Schedule" and Delete
+for view in views:
+    if view.Name == "Failed Doors Schedule":  
+        forms.alert("Failed Doors Schedule already in the Document, Run the Purge Validated Data Tool First ", title='Script Cancelled')
+        script.exit()
+        break
+
+# Start a transaction
 t = Transaction(doc, "Create Schedule")
 t.Start()
 

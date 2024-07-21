@@ -17,21 +17,6 @@ doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
 
-# Find the View that Equals to "Failed Doors Schedule"
-views = (FilteredElementCollector(doc)
-         .OfClass(ViewSchedule)
-         .WhereElementIsNotElementType()
-         .ToElements())
-for view in views:
-    if view.Name == "Failed Doors Schedule":
-
-        t = Transaction(doc, "Delete Schedule")
-        t.Start()
-
-        doc.Delete(view.Id)
-
-        t.Commit()
-
 # Clear all values from the "FLS_Comment" parameter
 
 doors = (FilteredElementCollector(doc)
@@ -46,3 +31,30 @@ for door in doors:
     if parameter.HasValue:
         parameter.ClearValue()
 t.Commit()
+
+# Find all the Schedule Views
+views = (FilteredElementCollector(doc)
+         .OfClass(ViewSchedule)
+         .WhereElementIsNotElementType()
+         .ToElements())
+
+# Change the Active View of the Document
+open_views = ui_doc.GetOpenUIViews()
+for open_view in open_views:
+    try:
+        if open_view != ui_doc.ActiveView:
+            open_view.Close()
+            break
+    except:
+        forms.alert("This is the Only Open View in the Document, Delete the Failed Doors Schedule Manually!", title='Script Cancelled')
+        script.exit()
+
+# Find the View that Equals to "Failed Doors Schedule" and Delete
+for view in views:
+    if view.Name == "Failed Doors Schedule":  
+        t = Transaction(doc, "Delete Schedule")
+        t.Start()
+        doc.Delete(view.Id)
+        t.Commit()
+        break
+
