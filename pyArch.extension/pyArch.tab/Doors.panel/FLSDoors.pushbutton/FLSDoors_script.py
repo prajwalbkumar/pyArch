@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 '''FLS Doors Validator'''
 
-__title__ = "FLS Doors Validator"
-__author__ = "prajwalbkumar"
-
 # Imports
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import UIDocument
