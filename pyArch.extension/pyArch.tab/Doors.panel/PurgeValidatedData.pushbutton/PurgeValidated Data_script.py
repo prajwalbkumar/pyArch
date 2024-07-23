@@ -53,11 +53,12 @@ for view in views:
 open_views = ui_doc.GetOpenUIViews()
 for open_view in open_views:
     try:
-        if open_view.ViewId == target_view_id: # ID of the View == ID of the Failed Doors Schedule View
-            open_view.Close()
-            break
+        if target_view_id:
+            if open_view.ViewId == target_view_id: # ID of the View == ID of the Failed Doors Schedule View
+                open_view.Close()
+                break
     except:
-        forms.alert("This is the Only Open View in the Document, Open another view and Run the tool again!", title='Script Cancelled')
+        forms.alert("This is the Only Open View in the Document, Open another view and Run the tool again!", title='Script Cancelled') # THIS MESSAGE is unexpecctedly thrown
         script.exit()
 
 # Find the View that Equals to "Failed Doors Schedule" and Delete
