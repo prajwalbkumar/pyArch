@@ -5,19 +5,14 @@ __title__ = "FLS Doors Validator"
 __author__ = "prajwalbkumar"
 
 # Imports
-from Autodesk.Revit.DB import (
-    FilteredElementCollector, # Used for Collecting elements from the Revit Doc
-    BuiltInCategory, # Finds all the built in Category
-    Transaction, # Class to do changes in the Project
-    UnitUtils, # Changing units to and from Internal Units in Feet and Inches
-    BuiltInParameterGroup, # Class to get the Parameter Groups in the Project
-    UnitTypeId, # Class that Converts English Units to Revit Unit Types
-)
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI import UIDocument
 from pyrevit import revit, forms, script
 import csv 
 import os
 
 script_dir = os.path.dirname(__file__)
+ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
@@ -52,52 +47,54 @@ def doors_in_document():
 
 # Definition to extract data from the CSV File
 def code_csv_reader():
-    csv_filename = "FLS Door Codes.csv"
-    file = os.path.join(script_dir, csv_filename) 
-    # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
-    with open(file, "r") as csv_file:
-        csv_reader = csv.DictReader(csv_file)
+    try:
+        csv_filename = "FLS Door Codes.csv"
+        file = os.path.join(script_dir, csv_filename) 
+        # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
+        with open(file, "r") as csv_file:
+            csv_reader = csv.DictReader(csv_file)
 
-        code = []
-        min_single_leaf = []
-        min_unq_main_leaf = []
-        min_unq_side_leaf = []
-        min_double_leaf = []
-        max_single_leaf = []
-        max_unq_main_leaf = []
-        max_unq_side_leaf = []
-        max_double_leaf = []
-        min_height = []
+            code = []
+            min_single_leaf = []
+            min_unq_main_leaf = []
+            min_unq_side_leaf = []
+            min_double_leaf = []
+            max_single_leaf = []
+            max_unq_main_leaf = []
+            max_unq_side_leaf = []
+            max_double_leaf = []
+            min_height = []
 
-        for row in csv_reader:
-            code.append(row["CODE"])
-            min_single_leaf.append(row["MIN SINGLE LEAF"])
-            min_unq_main_leaf.append(row["MIN UNQ MAIN LEAF"])
-            min_unq_side_leaf.append(row["MIN UNQ SIDE LEAF"])
-            min_double_leaf.append(row["MIN DOUBLE LEAF"])
-            max_single_leaf.append(row["MAX SINGLE LEAF"])
-            max_unq_main_leaf.append(row["MAX UNQ MAIN LEAF"])
-            max_unq_side_leaf.append(row["MAX UNQ SIDE LEAF"])
-            max_double_leaf.append(row["MAX DOUBLE LEAF"])
-            min_height.append(row["MIN HEIGHT"])
+            for row in csv_reader:
+                code.append(row["CODE"])
+                min_single_leaf.append(row["MIN SINGLE LEAF"])
+                min_unq_main_leaf.append(row["MIN UNQ MAIN LEAF"])
+                min_unq_side_leaf.append(row["MIN UNQ SIDE LEAF"])
+                min_double_leaf.append(row["MIN DOUBLE LEAF"])
+                max_single_leaf.append(row["MAX SINGLE LEAF"])
+                max_unq_main_leaf.append(row["MAX UNQ MAIN LEAF"])
+                max_unq_side_leaf.append(row["MAX UNQ SIDE LEAF"])
+                max_double_leaf.append(row["MAX DOUBLE LEAF"])
+                min_height.append(row["MIN HEIGHT"])
 
-        return (
-            code,
-            min_single_leaf,
-            min_unq_main_leaf,
-            min_unq_side_leaf,
-            min_double_leaf,
-            max_single_leaf,
-            max_unq_main_leaf,
-            max_unq_side_leaf,
-            max_double_leaf,
-            min_height,
-        )
+            return (
+                code,
+                min_single_leaf,
+                min_unq_main_leaf,
+                min_unq_side_leaf,
+                min_double_leaf,
+                max_single_leaf,
+                max_unq_main_leaf,
+                max_unq_side_leaf,
+                max_double_leaf,
+                min_height,
+            )
+    except:
+        forms.alert("CSV Not Found - Contact the Author to Troubleshoot!", title='Script Cancelled')
+        script.exit()
 
 
 # MAIN SCRIPT
-
-# To. DO. : Consider adding error handling for cases where the CSV file cannot be read
 (
     code,
     min_single_leaf,
@@ -163,6 +160,8 @@ external_definition = group.Definitions.get_Item("FLS_Comment")
 if external_definition is None:
     raise ValueError("Definition 'FLS_Comment' not found in shared parameter file")
 
+external_definition.HideWhenNoValue = True
+
 t = Transaction(doc, "Create Shared Parameter")
 t.Start()
 
@@ -177,75 +176,118 @@ if not binding_map.Insert(external_definition, newIB, BuiltInParameterGroup.PG_T
 t.Commit()
 app.SharedParametersFilename = original_shared_file
 
-passed_doors = 0
-total_doors = len(door_collector)
-
+# TO DO : CREATE AN EXCLUSION FOR CUBICLE DOORS AS WELL
+doors_excluded = ["ACCESS PANELS","ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
+t = Transaction(doc, "Find Failed Doors")
+t.Start()
 for door in door_collector:
     symbol = door.Symbol
     error_message = "Error: "
-
-    # Check if the Door is Single Panel or More
-    if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
-        # Check Width and Height Requirements
-        door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
-        door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
-
-        if not (door_width > min_single_leaf):
-            error_message += "The Door Width should be larger than " + str(min_single_leaf) + ". "
-
-        if not (door_width < max_single_leaf):
-            error_message += "The Door Width should be smaller than " + str(max_single_leaf) + ". "
-
-        if not (door_height > min_height):
-            error_message += "The Door Height should be larger than " + str(min_height) + ". "
-        else:
-            passed_doors += 1
-            continue
-    else:
-        # Check if the Door has equal leaves
-        if symbol.LookupParameter("Equal_Leaves").AsInteger():
+    door_type = symbol.LookupParameter("Door_Type").AsString()
+    if not door_type.upper() in doors_excluded:
+        # Check if the Door is Single Panel or More
+        if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
+            # Check Width and Height Requirements
             door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
             door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
 
-            if not ((door_width / 2) > min_double_leaf):
-                error_message += "The Door Width should be larger than " + str(min_double_leaf) + ". "
+            if not (door_width > min_single_leaf):
+                error_message += "The Door Width should be larger than " + str(min_single_leaf) + ". "
 
-            if not ((door_width / 2) < max_double_leaf):
-                error_message += "The Door Width should be smaller than " + str(max_double_leaf) + ". "
+            if not (door_width < max_single_leaf):
+                error_message += "The Door Width should be smaller than " + str(max_single_leaf) + ". "
 
             if not (door_height > min_height):
                 error_message += "The Door Height should be larger than " + str(min_height) + ". "
-            else:
-                passed_doors += 1
-                continue
+            
         else:
-            door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
+            # Check if the Door has equal leaves
+            if symbol.LookupParameter("Equal_Leaves").AsInteger() == 1:
+                door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
+                door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
 
-            main_leaf = convert_internal_units(symbol.LookupParameter("Main Panel Width").AsDouble(), False, "mm") - door_thickness
-            side_leaf = convert_internal_units(symbol.LookupParameter("Side Panel Width").AsDouble(), False, "mm") - door_thickness
+                no_of_leaves = symbol.LookupParameter("Leaf_Number").AsInteger()
+                if not ((door_width / no_of_leaves) > min_double_leaf):
+                    error_message += "The Leaf Width should be larger than " + str(min_double_leaf) + ". "
 
-            door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
+                if not ((door_width / no_of_leaves) < max_double_leaf):
+                    error_message += "The Leaf Width should be smaller than " + str(max_double_leaf) + ". "
 
-            if not (main_leaf > min_unq_main_leaf):
-                error_message += "The Main Leaf Width should be larger than " + str(min_unq_main_leaf) + ". "
-
-            if not (main_leaf < max_unq_main_leaf):
-                error_message += "The Main Leaf Width should be smaller than " + str(max_unq_main_leaf) + ". "
-
-            if not (side_leaf > min_unq_side_leaf):
-                error_message += "The Side Leaf Width should be larger than " + str(min_unq_side_leaf) + ". "
-
-            if not (side_leaf < max_unq_side_leaf):
-                error_message += "The Side Leaf Width should be smaller than " + str(max_unq_side_leaf) + ". "
-
-            if not (door_height > min_height):
-                error_message += "The Door Height should be larger than " + str(min_height) + ". "
+                if not (door_height > min_height):
+                    error_message += "The Door Height should be larger than " + str(min_height) + ". "
+                
             else:
-                passed_doors += 1
-                continue
+                door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
 
-    print(door.LookupParameter("Mark").AsString())
-    print("{} \n".format(error_message))
+                main_leaf = convert_internal_units(symbol.LookupParameter("Main Panel Width").AsDouble(), False, "mm") - door_thickness
+                side_leaf = convert_internal_units(symbol.LookupParameter("Side Panel Width").AsDouble(), False, "mm") - door_thickness
 
-    # Set the shared parameter to the error message
-    # door.LookupParameter("FLS_Comments").Set(error_message)
+                door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
+
+                if not (main_leaf > min_unq_main_leaf):
+                    error_message += "The Main Leaf Width should be larger than " + str(min_unq_main_leaf) + ". "
+
+                if not (main_leaf < max_unq_main_leaf):
+                    error_message += "The Main Leaf Width should be smaller than " + str(max_unq_main_leaf) + ". "
+
+                if not (side_leaf > min_unq_side_leaf):
+                    error_message += "The Side Leaf Width should be larger than " + str(min_unq_side_leaf) + ". "
+
+                if not (side_leaf < max_unq_side_leaf):
+                    error_message += "The Side Leaf Width should be smaller than " + str(max_unq_side_leaf) + ". "
+
+                if not (door_height > min_height):
+                    error_message += "The Door Height should be larger than " + str(min_height) + ". "
+
+        door.LookupParameter("FLS_Comment").Set(error_message)
+
+t.Commit()
+
+# Find all the Schedule Views
+views = (FilteredElementCollector(doc)
+         .OfClass(ViewSchedule)
+         .WhereElementIsNotElementType()
+         .ToElements())
+
+# Find the View that Equals to "Failed Doors Schedule" and Delete
+for view in views:
+    if view.Name == "Failed Doors Schedule":  
+        forms.alert("Failed Doors Schedule already in the Document, Run the Purge Validated Data Tool First ", title='Script Cancelled')
+        script.exit()
+        break
+
+# Start a transaction
+t = Transaction(doc, "Create Schedule")
+t.Start()
+
+# Get Door Category
+door_category_id = Category.GetCategory(doc, BuiltInCategory.OST_Doors).Id
+
+# Create a schedule for the Door category
+view_schedule = ViewSchedule.CreateSchedule(doc, door_category_id)
+view_schedule.Name = "Failed Doors Schedule"
+
+# Get all fields that can be added to the schedule
+schedulable_fields = view_schedule.Definition.GetSchedulableFields()
+
+# Add specific fields to the schedule
+for field in schedulable_fields:
+    if field.GetName(doc) == "FLS_Comment":
+        schedule_field = view_schedule.Definition.AddField(field)
+        schedule_filter = ScheduleFilter(schedule_field.FieldId, ScheduleFilterType.Contains, "Error: The")
+        view_schedule.Definition.AddFilter(schedule_filter)  # Add the filter to the schedule
+        continue
+    if field.GetName(doc) == "Mark":
+        schedule_field = view_schedule.Definition.AddField(field)
+        continue
+    if field.GetName(doc) == "Family and Type":
+        schedule_field = view_schedule.Definition.AddField(field)
+        schedule_sort = ScheduleSortGroupField(schedule_field.FieldId, ScheduleSortOrder.Ascending)
+        view_schedule.Definition.AddSortGroupField(schedule_sort)
+        continue
+
+# Commit the transaction
+t.Commit()
+
+# Set the Active View to the Created Schedule
+ui_doc.ActiveView = view_schedule
