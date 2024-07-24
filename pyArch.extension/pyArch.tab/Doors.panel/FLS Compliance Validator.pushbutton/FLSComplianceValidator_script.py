@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 '''FLS Doors Validator'''
+__title__ = "FLS Compliance Validator"
+__author__ = "prajwalbkumar"
+
 
 # Imports
 from Autodesk.Revit.DB import *

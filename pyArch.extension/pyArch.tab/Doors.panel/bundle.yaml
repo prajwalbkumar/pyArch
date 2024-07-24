@@ -1,3 +1,4 @@
 layout:
-  - FLS Doors Validator
+  - FLS Compliance Validator
+  - Room Data Validator
   - Purge Validated Data
