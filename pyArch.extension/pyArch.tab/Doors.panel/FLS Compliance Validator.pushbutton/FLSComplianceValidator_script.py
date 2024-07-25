@@ -183,64 +183,66 @@ t.Start()
 for door in door_collector:
     symbol = door.Symbol
     error_message = "Error: "
-    door_type = symbol.LookupParameter("Door_Type").AsString()
-    if not door_type.upper() in doors_excluded:
-        # Check if the Door is Single Panel or More
-        if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
-            # Check Width and Height Requirements
-            door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
-            door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
-
-            if not (door_width > min_single_leaf):
-                error_message += "The Door Width should be larger than " + str(min_single_leaf) + ". "
-
-            if not (door_width < max_single_leaf):
-                error_message += "The Door Width should be smaller than " + str(max_single_leaf) + ". "
-
-            if not (door_height > min_height):
-                error_message += "The Door Height should be larger than " + str(min_height) + ". "
-            
-        else:
-            # Check if the Door has equal leaves
-            if symbol.LookupParameter("Equal_Leaves").AsInteger() == 1:
+    try:
+        door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error heree. Door might not have Door Type Parameter sometimes.
+        if not door_type.upper() in doors_excluded:
+            # Check if the Door is Single Panel or More
+            if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
+                # Check Width and Height Requirements
                 door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
                 door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
 
-                no_of_leaves = symbol.LookupParameter("Leaf_Number").AsInteger()
-                if not ((door_width / no_of_leaves) > min_double_leaf):
-                    error_message += "The Leaf Width should be larger than " + str(min_double_leaf) + ". "
+                if not (door_width > min_single_leaf):
+                    error_message += "The Door Width should be larger than " + str(min_single_leaf) + ". "
 
-                if not ((door_width / no_of_leaves) < max_double_leaf):
-                    error_message += "The Leaf Width should be smaller than " + str(max_double_leaf) + ". "
+                if not (door_width < max_single_leaf):
+                    error_message += "The Door Width should be smaller than " + str(max_single_leaf) + ". "
 
                 if not (door_height > min_height):
                     error_message += "The Door Height should be larger than " + str(min_height) + ". "
                 
             else:
-                door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
+                # Check if the Door has equal leaves
+                if symbol.LookupParameter("Equal_Leaves").AsInteger() == 1:
+                    door_width = convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm")
+                    door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
 
-                main_leaf = convert_internal_units(symbol.LookupParameter("Main Panel Width").AsDouble(), False, "mm") - door_thickness
-                side_leaf = convert_internal_units(symbol.LookupParameter("Side Panel Width").AsDouble(), False, "mm") - door_thickness
+                    no_of_leaves = symbol.LookupParameter("Leaf_Number").AsInteger()
+                    if not ((door_width / no_of_leaves) > min_double_leaf):
+                        error_message += "The Leaf Width should be larger than " + str(min_double_leaf) + ". "
 
-                door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
+                    if not ((door_width / no_of_leaves) < max_double_leaf):
+                        error_message += "The Leaf Width should be smaller than " + str(max_double_leaf) + ". "
 
-                if not (main_leaf > min_unq_main_leaf):
-                    error_message += "The Main Leaf Width should be larger than " + str(min_unq_main_leaf) + ". "
+                    if not (door_height > min_height):
+                        error_message += "The Door Height should be larger than " + str(min_height) + ". "
+                    
+                else:
+                    door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
 
-                if not (main_leaf < max_unq_main_leaf):
-                    error_message += "The Main Leaf Width should be smaller than " + str(max_unq_main_leaf) + ". "
+                    main_leaf = convert_internal_units(symbol.LookupParameter("Main Panel Width").AsDouble(), False, "mm") - door_thickness
+                    side_leaf = convert_internal_units(symbol.LookupParameter("Side Panel Width").AsDouble(), False, "mm") - door_thickness
 
-                if not (side_leaf > min_unq_side_leaf):
-                    error_message += "The Side Leaf Width should be larger than " + str(min_unq_side_leaf) + ". "
+                    door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
 
-                if not (side_leaf < max_unq_side_leaf):
-                    error_message += "The Side Leaf Width should be smaller than " + str(max_unq_side_leaf) + ". "
+                    if not (main_leaf > min_unq_main_leaf):
+                        error_message += "The Main Leaf Width should be larger than " + str(min_unq_main_leaf) + ". "
 
-                if not (door_height > min_height):
-                    error_message += "The Door Height should be larger than " + str(min_height) + ". "
+                    if not (main_leaf < max_unq_main_leaf):
+                        error_message += "The Main Leaf Width should be smaller than " + str(max_unq_main_leaf) + ". "
 
-        door.LookupParameter("FLS_Comment").Set(error_message)
+                    if not (side_leaf > min_unq_side_leaf):
+                        error_message += "The Side Leaf Width should be larger than " + str(min_unq_side_leaf) + ". "
 
+                    if not (side_leaf < max_unq_side_leaf):
+                        error_message += "The Side Leaf Width should be smaller than " + str(max_unq_side_leaf) + ". "
+
+                    if not (door_height > min_height):
+                        error_message += "The Door Height should be larger than " + str(min_height) + ". "
+
+            door.LookupParameter("FLS_Comment").Set(error_message)
+    except:
+        continue
 t.Commit()
 
 # Find all the Schedule Views
