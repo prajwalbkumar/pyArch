@@ -39,7 +39,7 @@ def convert_internal_units(value, get_internal=False, units="mm"):
 
 # MAIN
 door_elements = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
-test_list = ["Room Number Checks", "Room Name Checks", "Sequencing Checks", "Room Function Checks"]
+test_list = ["Room Number Checks", "Room Name Checks", "Sequencing Checks"]
 
 # Choose a Test to Run
 test = forms.SelectFromList.show(test_list, title = "Select Target Test", width=300, height=300, button_name="Select Test", multiselect=False)
