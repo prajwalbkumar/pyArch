@@ -1,38 +1,10 @@
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Level, BuiltInParameter
 from pyrevit import revit, forms
 
 doc = revit.doc
 
-def highlight_element(element_id):
-    #Highlight the specified element
-    uidoc = revit.uidoc
-    uidoc.Selection.SetElementIds([DB.ElementId(element_id)])
-    uidoc.ShowElements([DB.ElementId(element_id)])
-
-def feet_to_mm(feet):
-    #Convert feet to millimeters.
-    return feet * 304.8
-
-def mm_to_feet(mm):
-    #Convert millimeters to feet.
-    return mm / 304.8
-
-def get_wall_materials(wall):
-  #Retrieve the wall's material from its type's compound structure.
-    wall_type = wall.WallType
-    compound_structure = wall_type.GetCompoundStructure()
-    if compound_structure:
-        layers = compound_structure.GetLayers()
-        for layer in layers:
-            material_id = layer.MaterialId
-            if material_id != DB.ElementId.InvalidElementId:
-                material = doc.GetElement(material_id)
-                if material:
-                    return material.Name
-    return None
-
-def get_wall_types():
-    #Retrieve a list of wall types available in the model
+def get_wall_names():
+    """Retrieve a list of wall names available in the model."""
     try:
         # Create a collector to get all walls in the project
         collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
@@ -47,26 +19,72 @@ def get_wall_types():
         
         return list(unique_wall_names)  # Return as a list
     except Exception as e:
-        forms.alert('Error retrieving wall types: {}'.format(e))
+        forms.alert('Error retrieving wall names: {}'.format(e))
         return []
 
-def main():
-    # Get wall types
-    wall_type_families = get_wall_types()
-    
-    if not wall_type_families:
-        forms.alert('No wall types found in the project.')
+def move_walls_based_on_direction(movement_direction, selected_wall_names):
+    walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+    levels = FilteredElementCollector(doc).OfClass(Level).ToElements()
+
+    if not walls:
+        forms.alert('No walls found in the project.')
         return
+    if not levels:
+        forms.alert('No levels found in the project.')
+        return
+
+    # Filter walls based on selected wall names
+    walls = [wall for wall in walls if wall.Name in selected_wall_names]
+
+    # Sort levels by elevation
+    levels = sorted(levels, key=lambda x: x.Elevation)
+
+    # Create a dictionary to pair CL and FFL levels
+    level_pairs = {}
+    for i in range(0, len(levels) - 1, 2):
+        level_pairs[levels[i].Id] = levels[i + 1].Id
+
+    with revit.Transaction('Move Walls Based on Direction'):
+        for wall in walls:
+            wall_level_id = wall.LevelId
+            wall_name = wall.Name if wall.Name else "Unknown Name"
+            wall_level = doc.GetElement(wall_level_id)
+
+            if movement_direction == 'CL to FFL':
+                if "CL" in wall_level.Name:
+                    if wall_level_id in level_pairs.keys():
+                        target_level_id = level_pairs[wall_level_id]
+                        level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
+                        if level_param:
+                            level_param.Set(target_level_id)
+                        else:
+                            forms.alert("Wall ID {} (Name: {}) does not have a 'Base Constraint' parameter.".format(wall.Id, wall_name))
+            elif movement_direction == 'FFL to CL':
+                if "FFL" in wall_level.Name:
+                    if wall_level_id in level_pairs.values():
+                        for cl_id, ffl_id in level_pairs.items():
+                            if ffl_id == wall_level_id:
+                                level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
+                                if level_param:
+                                    level_param.Set(cl_id)
+                                else:
+                                    forms.alert("Wall ID {} (Name: {}) does not have a 'Base Constraint' parameter.".format(wall.Id, wall_name))
+                                break
+
+def main():
+    # Get wall names
+    wall_names = get_wall_names()
     
-    # Remove duplicates (already handled by get_wall_types) and map families to ids
-    unique_wall_type_families = wall_type_families
-    family_to_id_map = {family: [] for family in unique_wall_type_families}
-    
+    if not wall_names:
+        forms.alert('No wall names found in the project.')
+        return
+
     # Get user choice for wall movement
-    movement_direction = forms.CommandSwitchWindow.show([
-        'Move Walls from CL to FFL',
-        'Move Walls from FFL to CL'
-    ], message='Choose the direction to move walls:')
+    movement_direction = forms.SelectFromList.show(
+        ['Move Walls from CL to FFL', 'Move Walls from FFL to CL'],
+        multiselect=False,
+        title='Choose the direction to move walls'
+    )
     
     if not movement_direction:
         forms.alert('No direction selected. Exiting script.')
@@ -75,15 +93,17 @@ def main():
     # Map user choice to direction
     movement_direction = 'CL to FFL' if 'CL to FFL' in movement_direction else 'FFL to CL'
     
-    # Let user select wall families
-    selected_wall_type_families = forms.SelectFromList.show(unique_wall_type_families, multiselect=True, title='Select Wall Families', default=unique_wall_type_families)
+    # Let user select wall names
+    selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
     
-    if not selected_wall_type_families:
-        forms.alert('No wall families selected. Exiting script.')
+    if not selected_wall_names:
+        forms.alert('No wall names selected. Exiting script.')
         return
+
+    # Call the function to move the walls based on user input
+    move_walls_based_on_direction(movement_direction, selected_wall_names)
     
     forms.alert('Script complete!')
 
 if __name__ == '__main__':
     main()
-
