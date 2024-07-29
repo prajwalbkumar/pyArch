@@ -39,7 +39,7 @@ def convert_internal_units(value, get_internal=False, units="mm"):
 
 # MAIN
 door_elements = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
-test_list = ["Room Number Checks", "Room Name Checks", "Sequencing Checks"]
+test_list = ["Room Number Checks", "Room Name Checks", "Sequencing Checks", "Room Type Checks"]
 
 # Choose a Test to Run
 test = forms.SelectFromList.show(test_list, title = "Select Target Test", width=300, height=300, button_name="Select Test", multiselect=False)
@@ -95,7 +95,7 @@ elif test == test_list[2]:
             forms.alert("Missing Room Numbers in Doors. Run the Room Number Check First", title="Script Cancelled")
             script.exit()
         
-        if door_room_number.AsString() == "":
+        elif door_room_number.AsString() == "":
             forms.alert("Missing Room Numbers in Doors. Run the Room Number Check First", title="Script Cancelled")
             script.exit()
 
@@ -141,8 +141,7 @@ elif test == test_list[2]:
                 index += 1
     forms.alert("Room Sequencing Checks Completed. Refer to the Report if any errors!", title = "Script Completed", warn_icon = False)
     script.exit()           
-                
-                
+                         
 # Error
 else:
     forms.alert("No Check Selected", title="Script Cancelled")
