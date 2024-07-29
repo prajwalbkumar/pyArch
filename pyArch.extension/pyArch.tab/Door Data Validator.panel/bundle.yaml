@@ -1,4 +1,6 @@
 layout:
   - FLS Compliance
   - Room Data Checks
+  - Fire Rating Checks
+  - Acoustic Rating Checks
   - Purge Validated Data
