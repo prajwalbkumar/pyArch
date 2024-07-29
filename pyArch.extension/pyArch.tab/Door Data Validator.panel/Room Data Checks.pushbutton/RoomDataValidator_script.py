@@ -95,7 +95,7 @@ elif test == test_list[2]:
             forms.alert("Missing Room Numbers in Doors. Run the Room Number Check First", title="Script Cancelled")
             script.exit()
         
-        if door_room_number.AsString() == "":
+        elif door_room_number.AsString() == "":
             forms.alert("Missing Room Numbers in Doors. Run the Room Number Check First", title="Script Cancelled")
             script.exit()
 
