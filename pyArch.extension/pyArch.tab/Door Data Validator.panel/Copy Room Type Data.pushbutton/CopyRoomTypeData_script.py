@@ -26,36 +26,43 @@ room_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ro
 t = Transaction(doc, "Transfer Room Type Data")
 t.Start()
 for door in door_collector:
+    
     if not door.LookupParameter("Room_Number").HasValue:
+        print("YAY")
         forms.alert("Room Number for Doors is not filled, Run the DAR Door Addin First!", title = "Script Exited", warn_icon = True)
         t.Commit()
         script.exit()
 
     elif door.LookupParameter("Room_Number").AsString() == "":
+        print("YAY1")
         forms.alert("Room Number for Doors is not filled, Run the DAR Door Addin First!", title = "Script Exited", warn_icon = True)
         t.Commit()
         script.exit()        
 
     if door.LookupParameter("Room_Type") is None:
+        print("YAY2")
         forms.alert("No Room_Type Parameter Found, Run the Add Room Type Parameter Tool first!", title = "Script Exited", warn_icon = True)
         t.Commit()
         script.exit()
     
-    else:
-        for room in room_collector:
-            if not room.LookupParameter("Room_Type").HasValue:
-                forms.alert("Make sure all the Rooms have their Room_Type Parameter Filled", title = "Script Exited", warn_icon = True)
-                t.Commit()
-                script.exit()
+    for room in room_collector:
+        if not room.LookupParameter("Room_Type").HasValue:
+            print("YAY3")
+            forms.alert("Make sure all the Rooms have their Room_Type Parameter Filled", title = "Script Exited", warn_icon = True)
+            t.Commit()
+            script.exit()
 
-            elif room.LookupParameter("Room_Type").AsString() == "":
-                forms.alert("Make sure all the Rooms have their Room_Type Parameter Filled", title = "Script Exited", warn_icon = True)
-                t.Commit()
-                script.exit()  
+        elif room.LookupParameter("Room_Type").AsString() == "":
+            print("YAY4")
+            forms.alert("Make sure all the Rooms have their Room_Type Parameter Filled", title = "Script Exited", warn_icon = True)
+            t.Commit()
+            script.exit()  
             
-            else:
-                if door.LookupParameter("Room_Number") == room.LookupParameter("Number"):
-                    door.LookupParamter("Room_Type").Set(room.LookupParameter("Room_Type").AsString())
+        if door.LookupParameter("Room_Number").AsString() == room.LookupParameter("Number").AsString():
+            door.LookupParameter("Room_Type").Set(room.LookupParameter("Room_Type").AsString())
+
+        forms.alert("Room_Type Parameter filled in all Door", title = "Script Completed", warn_icon = False)
+
 
 t.Commit()
 
