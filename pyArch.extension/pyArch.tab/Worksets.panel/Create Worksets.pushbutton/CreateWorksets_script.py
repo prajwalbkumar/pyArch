@@ -41,9 +41,16 @@ if not doc.IsWorkshared:
 
 # Prompt user for trade selection
 ops = ['ARCHITECTURE', 'INTERIOR', 'SIGNAGE', 'EXIT']
-selected_option = forms.CommandSwitchWindow.show(ops, message='Select the trade for which the worksets should be created')
+selected_option = forms.SelectFromList.show(
+    ops,
+    multiselect=False,
+    title='Select the trade for which the worksets should be created',
+    default=ops[0]  # Optionally, set a default selection
+)
 
-if selected_option == 'EXIT':
+if not selected_option:
+    print("Worksets are not created")
+elif selected_option == 'EXIT':
     print("Worksets are not created")
 else:
     # Read the appropriate CSV file based on the selected trade
