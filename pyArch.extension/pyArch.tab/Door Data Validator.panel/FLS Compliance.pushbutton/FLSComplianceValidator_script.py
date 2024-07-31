@@ -110,11 +110,10 @@ def code_csv_reader():
 
 # UI to Select the Code
 user_code = forms.SelectFromList.show(
-    code, title="Select Relevent Code", width=300, height=500, button_name="Select Code", multiselect=False
+    code, title="Select Relevent Code", width=300, height=300, button_name="Select Code", multiselect=False
 )
 
 if not user_code:
-    forms.alert("No Code Selected", title="Script Cancelled")
     script.exit()
 
 # Find the Index Values of the Code Selected from the Main Code List
