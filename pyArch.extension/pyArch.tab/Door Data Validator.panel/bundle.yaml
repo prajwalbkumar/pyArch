@@ -1,8 +1,9 @@
 layout:
   - Add Room Type Parameter
   - Copy Room Type Data
-  - FLS Compliance
   - Room Data Checks
+  - Door Detective
   - Fire Rating Checks
   - Acoustic Rating Checks
+  - FLS Compliance
   - Purge Validated Data

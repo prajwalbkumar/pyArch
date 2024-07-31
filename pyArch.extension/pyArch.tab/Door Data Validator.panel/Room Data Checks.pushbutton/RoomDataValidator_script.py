@@ -144,7 +144,7 @@ elif test == test_list[2]:
     forms.alert("Room Sequencing Checks Completed. Refer to the Report if any errors!", title = "Script Completed", warn_icon = False)
     script.exit()
 
-# Door - Room_Type Checks
+# Door - Room_Type Checkss
 elif test == test_list[3]:
     door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
 
