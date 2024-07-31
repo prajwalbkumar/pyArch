@@ -46,7 +46,7 @@ for door in door_collector:
 
 if not counter == door_count:
     report = forms.alert("All door-hosted walls need a Fire Rating.\n\n"
-                "Set the rating to 0 if none.", title="Wall Fire Rating Missing", warn_icon=True, options=["Show Report","Check Manually"])
+                "Set the rating to 0 if none.", title="Wall Fire Rating Missing", warn_icon=True, options=["Show Report"])
     
     if report == "Show Report":
         for line in report_message:       
