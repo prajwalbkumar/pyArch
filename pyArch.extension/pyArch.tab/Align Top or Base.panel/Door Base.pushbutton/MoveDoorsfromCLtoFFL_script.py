@@ -1,4 +1,12 @@
-from pyrevit import revit, DB, forms
+# -*- coding: utf-8 -*-
+'''Move Doors from CL to FFL'''
+
+__title__ = "Door Base"
+__author__ = "prakritisrimal"
+
+
+from pyrevit import revit, DB, forms, script
+output = script.get_output()
 
 def highlight_element(element_id):
     """Highlight the specified element."""
@@ -23,6 +31,9 @@ def move_doors_and_adjust_sill_heights():
         forms.alert('No doors or levels found in the project.')
         return
 
+    # Fixed tolerance value in millimeters
+    tolerance = 100  # Set tolerance range between -100 and +100 as needed
+
     # Sort levels by elevation
     levels = sorted(levels, key=lambda x: x.Elevation)
 
@@ -30,8 +41,6 @@ def move_doors_and_adjust_sill_heights():
     level_pairs = {}
     for i in range(0, len(levels) - 1, 2):
         level_pairs[levels[i].Id] = levels[i + 1].Id
-
-    tolerance = 100  # Tolerance in millimeters
 
     with revit.Transaction('Move Doors to Next Level'):
         for door in doors:
@@ -53,9 +62,12 @@ def move_doors_and_adjust_sill_heights():
 
                     current_sill_height_mm = feet_to_mm(sill_height_param.AsDouble())
 
+                    if current_sill_height_mm < 0:
+                        print('Sill height for door ID {} is negative. Skipping level change and sill height adjustment.'.format(output.linkify(door.Id)))
+                        continue  # Skip this door
 
                     if current_sill_height_mm >= 101:
-                        print("Sill height for door ID {} is greater than 101 mm. Skipping level change and sill height adjustment.".format(door.Id))
+                        print("Sill height for door ID {} is greater than 101 mm. Skipping level change and sill height adjustment.".format(output.linkify(door.Id)))
                         continue  # Skip this door
 
                     # If we are here, the sill height is 101 mm or less
