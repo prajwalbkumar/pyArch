@@ -1,4 +1,4 @@
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Level, BuiltInParameter
+from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, Level, BuiltInParameter, UnitUtils, DisplayUnitType
 from pyrevit import revit, forms
 
 doc = revit.doc
@@ -36,7 +36,7 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
     # Filter walls based on selected wall names
     walls = [wall for wall in walls if wall.Name in selected_wall_names]
 
-    # Sort levels by elevation
+    # Sort levels by elevationoffset
     levels = sorted(levels, key=lambda x: x.Elevation)
 
     # Create a dictionary to pair CL and FFL levels
@@ -50,6 +50,18 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
             wall_name = wall.Name if wall.Name else "Unknown Name"
             wall_level = doc.GetElement(wall_level_id)
 
+            # Check base offset parameter
+            base_offset_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET)
+            if base_offset_param:
+                base_offset_mm = UnitUtils.ConvertFromInternalUnits(base_offset_param.AsDouble(), DisplayUnitType.DUT_MILLIMETERS)
+                
+                if base_offset_mm > 100:
+                    print("Wall ID {} (Name: {}) has a base offset greater than 100 mm. Skipping level change and adjustment.".format(wall.Id, wall_name))
+                    continue  # Skip this wall
+                
+                if base_offset_mm <= 100:
+                    base_offset_param.Set(UnitUtils.ConvertToInternalUnits(0, DisplayUnitType.DUT_MILLIMETERS))
+            
             if movement_direction == 'CL to FFL':
                 if "CL" in wall_level.Name:
                     if wall_level_id in level_pairs.keys():
