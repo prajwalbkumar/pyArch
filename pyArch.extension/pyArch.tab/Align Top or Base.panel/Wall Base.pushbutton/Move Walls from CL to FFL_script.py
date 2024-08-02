@@ -25,7 +25,7 @@ def get_wall_names():
         return []
 
 def update_base_offset(walls):
-    """Update the base offset parameter of walls, setting it to 0 if <= 100 mm."""
+    """Update the base offset parameter of walls, setting it to 0 based on specified conditions."""
     with Transaction(doc, "Update Wall Base Offset") as t:
         try:
             t.Start()
@@ -37,13 +37,12 @@ def update_base_offset(walls):
                         base_offset_value = base_offset_param.AsDouble()
                         base_offset_mm = base_offset_value * 304.8  # Convert feet to millimeters
                         
-                        if base_offset_mm > 100:
-                            #print("Debug: Wall Name {}, Base Offset (mm): {}".format(wall.Name, base_offset_mm))
-                            print("Wall Name: {} (ID: {}) has a base offset greater than 100 mm. Skipping level change and adjustment.".format(wall.Name, output.linkify(wall.Id)))
-                        else:
+                        if -100 <= base_offset_mm <= 100:
                             if base_offset_mm > 0:
                                 print("Wall Name: {} (ID: {}) base offset set to 0 from {} mm and wall moved to CL/FFL as per user selection.".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
                             base_offset_param.Set(0)  # Set to 0, assuming input in feet
+                        else:
+                            print("Wall Name: {} (ID: {}) has a base offset outside the range of -100 mm to 100 mm. Skipping level change and adjustment.".format(wall.Name, output.linkify(wall.Id)))
                         
                     except Exception as e:
                         forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
@@ -55,6 +54,7 @@ def update_base_offset(walls):
         except Exception as e:
             t.RollBack()
             forms.alert('Error during base offset update: {}'.format(e))
+
 
 def move_walls_based_on_direction(movement_direction, selected_wall_names):
     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
