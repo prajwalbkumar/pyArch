@@ -34,14 +34,14 @@ except:
 
 
 # Check if the Room_Type Parameters are filled according to the Excel File. 
-options = forms.alert("Select the Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
+options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
 if options == "Select File":
     excel_path =  forms.pick_excel_file()
 else:
     script.exit()
 
 excel_workbook = xlrd.open_workbook(excel_path)
-excel_worksheet = excel_workbook.sheet_by_index(0)
+excel_worksheet = excel_workbook.sheet_by_index(1)
 excel_room_types = []
 for row in range(1, excel_worksheet.nrows):
     excel_room_types.append(excel_worksheet.cell_value(row,0).lower())
