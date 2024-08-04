@@ -269,7 +269,7 @@ for test in selected_test:
             output.print_md("***✅ ERROR CODE REFERENCE***")
             output.print_md("---")
             output.print_md("**ALPHABETICAL SEQUENCING REQUIRED** - Sequencing must be Alphabetical\n")
-            output.print_md("**INCORRECT SEQUENCING**            - Sequencing skips a few ordered characters.\n")
+            output.print_md("**INCORRECT SEQUENCING**             - Sequencing skipped a few ordered characters.\n")
             output.print_md("---")
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃".format(test))
