@@ -6,8 +6,7 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import forms, script
 import xlrd
 
 ui_doc = __revit__.ActiveUIDocument
@@ -46,26 +45,49 @@ excel_room_types = []
 for row in range(1, excel_worksheet.nrows):
     excel_room_types.append(excel_worksheet.cell_value(row,0).lower())
 
-failed_rooms_message = []
+failed_data = []
 for room in room_collector:
+    failed_room_data = []
     if not room.LookupParameter("Room_Type").HasValue:
-        failed_rooms_message.append("Room with Element ID - {} does not have the Room Type Parameter Filled" .format(output.linkify(room.Id)))
+        failed_room_data.append(output.linkify(room.Id))
+        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
+        failed_room_data.append(room.LookupParameter("Name").AsString().upper())
+        failed_room_data.append(room.LookupParameter("Number").AsString().upper())
+        failed_room_data.append("ROOM_TYPE VALUE MISSING")
 
     elif room.LookupParameter("Room_Type").AsString() == "":
-        failed_rooms_message.append("Room with Element ID - {} does not have the Room Type Parameter Filled" .format(output.linkify(room.Id)))
+        failed_room_data.append(output.linkify(room.Id))
+        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
+        failed_room_data.append(room.LookupParameter("Name").AsString().upper())
+        failed_room_data.append(room.LookupParameter("Number").AsString().upper())
+        failed_room_data.append("ROOM_TYPE VALUE MISSING")
     
     else:
         if room.LookupParameter("Room_Type").AsString().lower() in excel_room_types:
             continue
         else:
-            failed_rooms_message.append("Room with Element ID - {} contains an incorrect Room_Type Parameter" .format(output.linkify(room.Id)))
+            failed_room_data.append(output.linkify(room.Id))
+            failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
+            failed_room_data.append(room.LookupParameter("Name").AsString().upper())
+            failed_room_data.append(room.LookupParameter("Number").AsString().upper())
+            failed_room_data.append("ROOM_TYPE VALUE MISMATCH")
+    failed_data.append(failed_room_data)
 
-if failed_rooms_message:
+if failed_data:
     report = forms.alert("Rooms must have a valid Room_Type Parameter.\n\n"
                 "Set the Parameter as per the Design Database.", title="Room_Type Error", warn_icon=True, options=["Show Report"])
     if report == "Show Report":
-        for line in failed_rooms_message:
-            print(line)
+        output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__ )) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+        output.print_md("---") # Markdown Line Break
+        output.print_md("**ROOM_TYPE VALUE MISSING**  - Empty Room Type Parameter. Refer to the Design Database for Values.") # Print a Quote
+        output.print_md("**ROOM_TYPE VALUE MISMATCH** - Incorrect Room Rype Value. Refer to the Design Database for Values.") # Print a Quote
+        output.print_md("---") # Markdown Line Break
         script.exit()
     else:
         script.exit()
@@ -74,18 +96,35 @@ if failed_rooms_message:
 t = Transaction(doc, "Transfer Room Type Data")
 t.Start()
 
-failed_doors_message = []
+failed_data = []
 for door in door_collector:
+    failed_door_data = []
     if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "":
-        failed_doors_message.append("Door with Element ID - {} does not have a Room Number".format(output.linkify(door.Id)))
+        failed_door_data.append(output.linkify(door.Id))
+        failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
+        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+        failed_door_data.append("NO ROOM NUMBER DATA FOUND")
+    else:
+        continue
+    failed_data.append(failed_door_data)
 
-if failed_doors_message:
+if failed_data:
     t.RollBack()
     result = forms.alert("There are Doors with Empty Room_Number Parameter\n\nCheck Report", title = "Aborting", warn_icon = True, options=["Show Report"])
     if result == "Show Report":
-        for line in failed_doors_message:
-            print(line)
-    script.exit()
+        output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__ )) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK", "LEVEL", "ERROR CODE"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+        output.print_md("---") # Markdown Line Break
+        output.print_md("**NO ROOM NUMBER DATA FOUND**  - Empty Room Number Parameter. Run the DAR Door Add-In First.") # Print a Quote
+        output.print_md("---") # Markdown Line Break
+        script.exit()
+    else:
+        script.exit()
 
 for door in door_collector:
     for room in room_collector:

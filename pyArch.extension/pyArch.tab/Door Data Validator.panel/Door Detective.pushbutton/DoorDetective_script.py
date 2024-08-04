@@ -42,169 +42,368 @@ excel_room_types = []
 for row in range(1, excel_worksheet.nrows):
     excel_room_types.append(excel_worksheet.cell_value(row,0).lower())
 
-failed_doors_message = []
+failed_data = []
 for door in door_collector:
+    failed_door_data = []
     if not door.LookupParameter("Room_Type").HasValue:
-        failed_doors_message.append("Door with Element ID - {} does not have any Room_Type Parameter" .format(output.linkify(door.Id)))
+        failed_door_data.append(output.linkify(door.Id))
+        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+        failed_door_data.append("ROOM_TYPE VALUE MISSING")
+        failed_data.append(failed_door_data)
+        break
 
     elif door.LookupParameter("Room_Type").AsString() == "":
-        failed_doors_message.append("Door with Element ID - {} does not have any Room_Type Parameter" .format(output.linkify(door.Id)))
+        failed_door_data.append(output.linkify(door.Id))
+        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+        failed_door_data.append("ROOM_TYPE VALUE MISSING")
+        failed_data.append(failed_door_data)
+        break
     
     else:
         if door.LookupParameter("Room_Type").AsString().lower() in excel_room_types:
             continue
         else:
-            failed_doors_message.append("Door with Element ID - {} contains an incorrect Room_Type Parameter" .format(output.linkify(door.Id)))
+            failed_door_data.append(output.linkify(door.Id))
+            failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+            failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+            failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
+            failed_data.append(failed_door_data)
+            break
 
-if failed_doors_message:
-    report = forms.alert("Doors must have a valid Room_Type Parameter.\n\n"
-                "Set the Parameter as per the Design Database.\n"
-                "Or Transfer the Values from Rooms to Doors using the Copy Room Type Data Tool", title="Room_Type Error", warn_icon=True, options=["Show Report"])
-    if report == "Show Report":
-        for line in failed_doors_message:
-            print(line)
-        script.exit()
-    else:
-        script.exit()
+if failed_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
+    output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+    output.print_md("---") # Markdown Line Break
+    output.print_md("**ROOM_TYPE VALUE MISSING**  - Empty Room Type Parameter. Run the Copy Room Type Tool.") # Print a Quote
+    output.print_md("**ROOM_TYPE VALUE MISMATCH** - Incorrect Room Rype Value. Refer to the Design Database for Values.") # Print a Quote
+    output.print_md("---") # Markdown Line Break
+    script.exit()
 
+checks = ["No. of Leaves Check", "Leaf Width Check", "Leaf Height Check", "Undercut Check", "Leaf Material Check","Leaf Elevation Check", "Leaf Face Finish Check", "Frame Material Check", "Frame Elevation Check", "Frame Finish Check"]
+select_check = forms.SelectFromList.show(checks, title="Select Door Check", width=300, height=500, button_name="Select Code", multiselect=True)
 
-checks = ["No. of Leaves", "Leaf Width", "Leaf Height", "Undercut", "Leaf Material","Leaf Elevation", "Leaf Face Finish", "Frame Material", "Frame Elevation", "Frame Finish"]
-user_check = forms.SelectFromList.show(checks, title="Select Door Check", width=300, height=500, button_name="Select Code", multiselect=False)
-
-if not user_check:
+if not select_check:
     script.exit()     
 
-if user_check == checks[0]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_leaf_number = door.Symbol.LookupParameter("Leaf_Number").AsValueString()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_leaf_number == str(int(excel_worksheet.cell_value(row,1))):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Number - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+for user_check in select_check:
+    if user_check == checks[0]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_leaf_number = door.Symbol.LookupParameter("Leaf_Number").AsValueString()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_leaf_number == str(int(excel_worksheet.cell_value(row,1))):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID LEAF NUMBER")
+                        failed_door_data.append(door_leaf_number.upper())
+                        failed_door_data.append(str(int(excel_worksheet.cell_value(row,1))).upper())
+                        failed_data.append(failed_door_data)
+                        break
+                        
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+            output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+            output.print_md("---") # Markdown Line Break
+            output.print_md("**NO ROOM NUMBER FOUND**         - Room_Number Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**MARK & ROOM_NUMBER MISMATCH**  - Room_Number & Mark Value do not Match for the Door. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
 
 
-if user_check == checks[1]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_width = door.Symbol.LookupParameter("Width").AsValueString()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_width == str(int(excel_worksheet.cell_value(row,2))):
-                    door_error_message.append("Door with Element ID {} has invalid Width - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+    if user_check == checks[1]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_width = door.Symbol.LookupParameter("Width").AsValueString()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_width == str(int(excel_worksheet.cell_value(row,2))):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID WIDTH")
+                        failed_door_data.append(door_width.upper())
+                        failed_door_data.append(str(int(excel_worksheet.cell_value(row,2))).upper())
+                        failed_data.append(failed_door_data)
+                        break
 
-if user_check == checks[2]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_height = door.Symbol.LookupParameter("Height").AsValueString()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_height == str(int(excel_worksheet.cell_value(row,3))):
-                    door_error_message.append("Door with Element ID {} has invalid Height - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
 
-if user_check == checks[3]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_undercut = door.Symbol.LookupParameter("Undercut").AsValueString()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_undercut == str(int(excel_worksheet.cell_value(row,4))):
-                    door_error_message.append("Door with Element ID {} has invalid Undercut - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+    if user_check == checks[2]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_height = door.Symbol.LookupParameter("Height").AsValueString()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_height == str(int(excel_worksheet.cell_value(row,3))):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID HIEGHT")
+                        failed_door_data.append(door_height.upper())
+                        failed_door_data.append(str(int(excel_worksheet.cell_value(row,3))).upper())
+                        failed_data.append(failed_door_data)
+                        break
 
-if user_check == checks[4]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_leaf_material = door.Symbol.LookupParameter("Leaf_Material").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_leaf_material == str(excel_worksheet.cell_value(row,5).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Material - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
 
-if user_check == checks[5]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_leaf_elevation = door.Symbol.LookupParameter("Leaf_Elevation").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_leaf_elevation == str(excel_worksheet.cell_value(row,6).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Elevation - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+    if user_check == checks[3]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_undercut = door.Symbol.LookupParameter("Undercut").AsValueString()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_undercut == str(int(excel_worksheet.cell_value(row,4))):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID UNDERCUT")
+                        failed_door_data.append(door_undercut.upper())
+                        failed_door_data.append(str(int(excel_worksheet.cell_value(row,4))).upper())
+                        failed_data.append(failed_door_data)
+                        break
 
-if user_check == checks[6]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_leaf_face_finish = door.Symbol.LookupParameter("Leaf_Face_Finish").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_leaf_face_finish == str(excel_worksheet.cell_value(row,7).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Face Finish - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
 
-if user_check == checks[7]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_frame_material = door.Symbol.LookupParameter("Frame_Material").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_frame_material == str(excel_worksheet.cell_value(row,8).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Frame Material - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+    if user_check == checks[4]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_leaf_material = door.Symbol.LookupParameter("Leaf_Material").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_leaf_material == str(excel_worksheet.cell_value(row,5).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID LEAF MATERIAL")
+                        failed_door_data.append(door_leaf_material.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,5).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
 
-if user_check == checks[8]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_frame_elevation = door.Symbol.LookupParameter("Frame_Elevation").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_frame_elevation == str(excel_worksheet.cell_value(row,9).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Frame Elevation - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
 
-if user_check == checks[9]: 
-    door_error_message = []
-    for door in door_collector:
-        door_room_type = door.LookupParameter("Room_Type").AsString().lower()
-        door_frame_finish = door.Symbol.LookupParameter("Frame_Face_Finish").AsValueString().lower()
-        for row in range(1, excel_worksheet.nrows):
-            if door_room_type == excel_worksheet.cell_value(row,0).lower():
-                if not door_frame_finish == str(excel_worksheet.cell_value(row,10).lower()):
-                    door_error_message.append("Door with Element ID {} has invalid Leaf Frame Elevation - Refer the Door Design Database" .format(output.linkify(door.Id)))
-                    break
-                else:
-                    break
+    if user_check == checks[5]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_leaf_elevation = door.Symbol.LookupParameter("Leaf_Elevation").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_leaf_elevation == str(excel_worksheet.cell_value(row,6).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID LEAF ELEVATION")
+                        failed_door_data.append(door_leaf_elevation.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,6).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
 
-if door_error_message:
-    for line in door_error_message:
-        print(line)
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+
+    if user_check == checks[6]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_leaf_face_finish = door.Symbol.LookupParameter("Leaf_Face_Finish").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_leaf_face_finish == str(excel_worksheet.cell_value(row,7).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID LEAF FACE FINISH")
+                        failed_door_data.append(door_leaf_face_finish.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,7).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
+
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")            
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+
+    if user_check == checks[7]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_frame_material = door.Symbol.LookupParameter("Frame_Material").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_frame_material == str(excel_worksheet.cell_value(row,8).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID FRAME MATERIAL")
+                        failed_door_data.append(door_frame_material.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,8).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
+
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")            
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+
+    if user_check == checks[8]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_frame_elevation = door.Symbol.LookupParameter("Frame_Elevation").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_frame_elevation == str(excel_worksheet.cell_value(row,9).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID FRAME ELEVATION")
+                        failed_door_data.append(door_frame_elevation.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,9).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
+
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")            
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+
+    if user_check == checks[9]: 
+        failed_data = []
+        for door in door_collector:
+            failed_door_data = []
+            door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            door_frame_finish = door.Symbol.LookupParameter("Frame_Face_Finish").AsValueString().lower()
+            for row in range(1, excel_worksheet.nrows):
+                if door_room_type == excel_worksheet.cell_value(row,0).lower():
+                    if not door_frame_finish == str(excel_worksheet.cell_value(row,10).lower()):
+                        failed_door_data.append(output.linkify(door.Id))
+                        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                        failed_door_data.append("INVALID FRAME FINISH")
+                        failed_door_data.append(door_frame_finish.upper())
+                        failed_door_data.append(str(excel_worksheet.cell_value(row,10).lower()).upper())
+                        failed_data.append(failed_door_data)
+                        break
+
+        # Print Reports
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
+            print("\n\n")            
+            output.print_md("---") # Markdown Line Break
+        else:
+            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
