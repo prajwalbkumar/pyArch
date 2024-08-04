@@ -160,7 +160,7 @@ for test in selected_test:
     elif test == test_list[2]:
         failed_data = []
         all_room_numbers = []
-        # print(len(door_elements))
+        # Check if all Room_Number Parameters are filled in every Door
         for door in door_elements:
             failed_door_data = []
             door_mark = door.LookupParameter("Mark").AsString()
@@ -202,71 +202,78 @@ for test in selected_test:
             output.print_md("---") # Markdown Line Break
             script.exit()
 
-        #Get the list of all unique Door Room Numbers
+
+
+        # Get the list of all unique Door Room Numbers
         unique_room_numbers = list(set(all_room_numbers))
         failed_data = []
+
         for unq_room_number in unique_room_numbers:
-            failed_door_data = []
-            # Store the Indices of unique occurances of the "Room Number" in "All Room Numbers"
+            # Store the Indices of unique occurrences of the "Room Number" in "All Room Numbers"
             unq_indices = []
-            for (index, item) in enumerate(all_room_numbers):
+            for index, item in enumerate(all_room_numbers):
                 if item == unq_room_number:
                     unq_indices.append(index)
-            # print(unq_indices)
 
             if len(unq_indices) > 1:
                 mark_character = []
                 flag = False
+
+                print(unq_indices)
                 for index in unq_indices:
-                    # Check the Last Character of the Mark Value.
-                    door_mark = door_elements[index].LookupParameter("Mark").AsString()
-                    door_mark = door_mark.lower()
-                    # print(door_mark)
-                    # If Last Character is a Digit, Tell the user that not all doors in [ROOM NUMBER] are sequenced with characters
+                    print(index)
+                    # Check the Last Character of the Mark Value
+                    door = door_elements[index]
+                    door_mark = door.LookupParameter("Mark").AsString().lower()
+
+                    # If Last Character is a Digit, tell the user that not all doors in [ROOM NUMBER] are sequenced with characters
                     if door_mark[-1].isdigit():
-                        failed_door_data.append(output.linkify(door.Id))
-                        failed_door_data.append(door_mark.upper())
-                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
-                        failed_door_data.append("ALPHABETICAL SEQUENING REQUIRED")
+                        failed_door_data = [
+                            output.linkify(door.Id),
+                            door_mark.upper(),
+                            door.LookupParameter("Level").AsValueString().upper(),
+                            door.LookupParameter("Room_Name").AsString().upper(),
+                            door.LookupParameter("Room_Number").AsString().upper(),
+                            "ALPHABETICAL SEQUENCING REQUIRED"
+                        ]
                         failed_data.append(failed_door_data)
                         flag = True
-                    # If not then append the character to the mark_character list
                     else:
                         mark_character.append(door_mark[-1])
-
+                # Only allow doors to pass throught that have alphabets as last digit
                 if flag:
                     continue
-                
+
+                # Check if the characters in mark_character are in alphabetical order
                 mark_character_string = "".join(sorted(mark_character))
                 alphabet = "abcdefghijklmnopqrstuvwxyz"
-                for char in mark_character_string:
-                    failed_door_data = []
-                    if not char == alphabet[index]:
-                        failed_door_data.append(output.linkify(door.Id))
-                        failed_door_data.append(door_mark.upper())
-                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
-                        failed_door_data.append("INCORRECT SEQUENCING")
-                        failed_data.append(failed_door_data)
-        if failed_data:
-            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(test)) # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
-            output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
-            output.print_md("---") # Markdown Line Break
-            output.print_md("**ALPHABETICAL SEQUENING REQUIRED** - Sequencing must be Alphabetical\n") # Print a Quote
-            output.print_md("**INCORRECT SEQUENCING**            - Sequencing skips few ordered characters.\n") # Print a Quote
-            output.print_md("---") # Markdown Line Break
-            script.exit()
 
+                for i, char in enumerate(mark_character_string):
+                    if char != alphabet[i]:
+                        door = door_elements[unq_indices[i]]
+                        failed_door_data = [
+                            output.linkify(door.Id),
+                            door.LookupParameter("Mark").AsString().upper(),
+                            door.LookupParameter("Level").AsValueString().upper(),
+                            door.LookupParameter("Room_Name").AsString().upper(),
+                            door.LookupParameter("Room_Number").AsString().upper(),
+                            "INCORRECT SEQUENCING"
+                        ]
+                        failed_data.append(failed_door_data)
+                        break
+
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(test))
+            output.print_md("---")
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"])
+            output.print_md("---")
+            output.print_md("***✅ ERROR CODE REFERENCE***")
+            output.print_md("---")
+            output.print_md("**ALPHABETICAL SEQUENCING REQUIRED** - Sequencing must be Alphabetical\n")
+            output.print_md("**INCORRECT SEQUENCING**            - Sequencing skips a few ordered characters.\n")
+            output.print_md("---")
         else:
-            output.print_md("##✅ {} Completed. No Issues Found 😃" .format(test)) # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-    
-        script.exit()
+            output.print_md("##✅ {} Completed. No Issues Found 😃".format(test))
+            output.print_md("---")
+
