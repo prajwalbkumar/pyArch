@@ -219,9 +219,7 @@ for test in selected_test:
                 mark_character = []
                 flag = False
 
-                print(unq_indices)
                 for index in unq_indices:
-                    print(index)
                     # Check the Last Character of the Mark Value
                     door = door_elements[index]
                     door_mark = door.LookupParameter("Mark").AsString().lower()
