@@ -50,16 +50,16 @@ for room in room_collector:
     failed_room_data = []
     if not room.LookupParameter("Room_Type").HasValue:
         failed_room_data.append(output.linkify(room.Id))
+        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
         failed_room_data.append(room.LookupParameter("Name").AsString().upper())
         failed_room_data.append(room.LookupParameter("Number").AsString().upper())
-        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
         failed_room_data.append("ROOM_TYPE VALUE MISSING")
 
     elif room.LookupParameter("Room_Type").AsString() == "":
         failed_room_data.append(output.linkify(room.Id))
+        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
         failed_room_data.append(room.LookupParameter("Name").AsString().upper())
         failed_room_data.append(room.LookupParameter("Number").AsString().upper())
-        failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
         failed_room_data.append("ROOM_TYPE VALUE MISSING")
     
     else:
@@ -67,9 +67,9 @@ for room in room_collector:
             continue
         else:
             failed_room_data.append(output.linkify(room.Id))
+            failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
             failed_room_data.append(room.LookupParameter("Name").AsString().upper())
             failed_room_data.append(room.LookupParameter("Number").AsString().upper())
-            failed_room_data.append(room.LookupParameter("Level").AsValueString().upper())
             failed_room_data.append("ROOM_TYPE VALUE MISMATCH")
     failed_data.append(failed_room_data)
 
@@ -77,10 +77,10 @@ if failed_data:
     report = forms.alert("Rooms must have a valid Room_Type Parameter.\n\n"
                 "Set the Parameter as per the Design Database.", title="Room_Type Error", warn_icon=True, options=["Show Report"])
     if report == "Show Report":
-        output.print_md("##⚠️ {} Completed. Issues Found" .format(__title__ )) # Markdown Heading 2
+        output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__ )) # Markdown Heading 2
         output.print_md("---") # Markdown Line Break
         output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "ROOM NAME", "ROOM NUMBER", "LEVEL", "ERROR CODE"]) # Print a Table
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
         print("\n\n")
         output.print_md("---") # Markdown Line Break
         output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
@@ -101,6 +101,7 @@ for door in door_collector:
     failed_door_data = []
     if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "":
         failed_door_data.append(output.linkify(door.Id))
+        failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
         failed_door_data.append("NO ROOM NUMBER DATA FOUND")
     else:
@@ -111,10 +112,10 @@ if failed_data:
     t.RollBack()
     result = forms.alert("There are Doors with Empty Room_Number Parameter\n\nCheck Report", title = "Aborting", warn_icon = True, options=["Show Report"])
     if result == "Show Report":
-        output.print_md("##⚠️ {} Completed. Issues Found" .format(__title__ )) # Markdown Heading 2
+        output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__ )) # Markdown Heading 2
         output.print_md("---") # Markdown Line Break
         output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "LEVEL", "ERROR CODE"]) # Print a Table
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK", "LEVEL", "ERROR CODE"]) # Print a Table
         print("\n\n")
         output.print_md("---") # Markdown Line Break
         output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
