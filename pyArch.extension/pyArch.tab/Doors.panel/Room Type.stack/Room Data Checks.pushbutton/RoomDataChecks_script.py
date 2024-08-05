@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''Check Discrepencies for Door & Room Relationship'''
 
-__title__ = "Room Data Validator"
+__title__ = "Room Data Checks"
 __author__ = "prajwalbkumar"
 
 # IMPORTS

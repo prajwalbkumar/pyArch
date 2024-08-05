@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Acousting Rating Checks'''
-__title__ = "Acousting Rating Checks"
+'''STC Rating Check'''
+__title__ = "STC Rating Check"
 __author__ = "prajwalbkumar"
 
 

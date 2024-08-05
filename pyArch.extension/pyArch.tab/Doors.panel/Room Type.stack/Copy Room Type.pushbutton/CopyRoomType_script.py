@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Copy Room Type Data'''
-__title__ = "Copy Room Type Data"
+'''Copy Room Type'''
+__title__ = "Copy Room Type"
 __author__ = "prajwalbkumar"
 
 

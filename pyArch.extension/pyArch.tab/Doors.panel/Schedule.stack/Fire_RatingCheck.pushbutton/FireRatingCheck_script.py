@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Fire Rating Checks'''
-__title__ = "Fire Rating Checks"
+'''Fire Rating Check'''
+__title__ = "Fire Rating Check"
 __author__ = "prajwalbkumar"
 
 

@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+'''Insert Worksets'''
+__title__ = "Insert Worksets"
+__author__ = "prakritisrimal"
+
 from pyrevit import forms
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.Exceptions import InvalidOperationException

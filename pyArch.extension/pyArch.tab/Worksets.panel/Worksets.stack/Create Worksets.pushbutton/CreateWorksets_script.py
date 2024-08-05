@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+'''Create Worksets'''
+__title__ = "Create Worksets"
+__author__ = "prajwalbkumar - prakritisrimal"
+
+
 # Import Libraries
 from Autodesk.Revit import DB
 from pyrevit import revit
