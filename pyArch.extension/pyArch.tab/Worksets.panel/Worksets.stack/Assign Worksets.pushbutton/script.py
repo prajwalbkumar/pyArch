@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+'''Assign Worksets'''
+__title__ = "Assign Worksets"
+__author__ = "prakritisrimal"
+
 from pyrevit import forms
 from Autodesk.Revit.DB import *
 doc=__revit__.ActiveUIDocument.Document

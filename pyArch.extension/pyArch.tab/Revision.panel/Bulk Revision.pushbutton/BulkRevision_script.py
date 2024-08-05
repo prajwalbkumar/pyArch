@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+'''Bulk Revisioning'''
+__title__ = "Bulk Revisioning"
+__author__ = "prajwalbkumar"
+
+
 # Import Libraries
 from pyrevit import revit
 from pyrevit import forms, script, EXEC_PARAMS 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Add Room Type Parameter'''
-__title__ = "Add Room Type Parameter"
+'''Add Room Type'''
+__title__ = "Add Room Type"
 __author__ = "prajwalbkumar"
 
 

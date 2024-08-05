@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+'''URS Checker'''
+__title__ = "URS Checker"
+__author__ = "prakritisrimal"
+
 import clr
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import *
