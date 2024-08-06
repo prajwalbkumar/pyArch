@@ -55,14 +55,35 @@ for test in selected_test:
         failed_data = []
         for door in door_elements:
             failed_door_data = []
-            door_mark = door.LookupParameter("Mark").AsString()
+
+            if door.LookupParameter("Mark").AsString() == "" or not door.LookupParameter("Mark").HasValue:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append("NONE")
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                failed_door_data.append("NO MARK VALUE FOUND")
+                failed_data.append(failed_door_data)
+                continue       
+            else:
+                door_mark = door.LookupParameter("Mark").AsString()
+
             door_room_number = door.LookupParameter("Room_Number")
             if not door_room_number.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NUMBER FOUND")
                 failed_data.append(failed_door_data)
                 continue
@@ -70,8 +91,11 @@ for test in selected_test:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NUMBER FOUND")
                 failed_data.append(failed_door_data)
                 continue
@@ -109,6 +133,8 @@ for test in selected_test:
             output.print_md("---") # Markdown Line Break
             output.print_md("**NO ROOM NUMBER FOUND**         - Room_Number Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
             output.print_md("**MARK & ROOM_NUMBER MISMATCH**  - Room_Number & Mark Value do not Match for the Door. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**NO MARK VALUE FOUND**          - Missing Door Marak Value. Run the DAR Door Add-In.") # Print a Quote
+            
             output.print_md("---") # Markdown Line Break
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃" .format(test)) # Markdown Heading 2
@@ -120,14 +146,34 @@ for test in selected_test:
         failed_data = []
         for door in door_elements:
             failed_door_data = []
-            door_mark = door.LookupParameter("Mark").AsString()
+            if door.LookupParameter("Mark").AsString() == "" or not door.LookupParameter("Mark").HasValue:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append("NONE")
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                failed_door_data.append("NO MARK VALUE FOUND")
+                failed_data.append(failed_door_data) 
+                continue      
+            else:
+                door_mark = door.LookupParameter("Mark").AsString()
+
             door_room_name = door.LookupParameter("Room_Name")
             if not door_room_name.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NAME FOUND")
                 failed_data.append(failed_door_data)
                 continue
@@ -136,7 +182,10 @@ for test in selected_test:
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
                 failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NAME FOUND")
                 failed_data.append(failed_door_data)
 
@@ -150,7 +199,8 @@ for test in selected_test:
             output.print_md("---") # Markdown Line Break
             output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
             output.print_md("---") # Markdown Line Break
-            output.print_md("**NO ROOM NAME FOUND** - Room_Name Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**NO ROOM NAME FOUND**   - Room_Name Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**NO MARK VALUE FOUND**  - Missing Door Marak Value. Run the DAR Door Add-In.") # Print a Quote
             output.print_md("---") # Markdown Line Break
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃" .format(test)) # Markdown Heading 2
@@ -163,15 +213,38 @@ for test in selected_test:
         # Check if all Room_Number Parameters are filled in every Door
         for door in door_elements:
             failed_door_data = []
-            door_mark = door.LookupParameter("Mark").AsString()
+            if door.LookupParameter("Mark").AsString() == "" or not door.LookupParameter("Mark").HasValue:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append("NONE")
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                failed_door_data.append("NO MARK VALUE FOUND")
+                failed_data.append(failed_door_data) 
+                continue      
+            else:
+                door_mark = door.LookupParameter("Mark").AsString()
+            
             door_room_number = door.LookupParameter("Room_Number")
 
             if not door_room_number.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NUMBER FOUND")
                 failed_data.append(failed_door_data)
                 continue
@@ -180,8 +253,14 @@ for test in selected_test:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
                 failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+                if door.LookupParameter("Room_Number").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 failed_door_data.append("NO ROOM NUMBER FOUND")
                 failed_data.append(failed_door_data)
                 continue
@@ -199,6 +278,7 @@ for test in selected_test:
             output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
             output.print_md("---") # Markdown Line Break
             output.print_md("**NO ROOM NUMBER FOUND** - Having Room Numbers in Doors is critical to test the Door Sequencing\n") # Print a Quote
+            output.print_md("**NO MARK VALUE FOUND**  - Missing Door Marak Value. Run the DAR Door Add-In.") # Print a Quote
             output.print_md("---") # Markdown Line Break
             script.exit()
 
@@ -274,4 +354,3 @@ for test in selected_test:
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃".format(test))
             output.print_md("---")
-
