@@ -42,12 +42,16 @@ excel_room_types = []
 for row in range(1, excel_worksheet.nrows):
     excel_room_types.append(excel_worksheet.cell_value(row,0).lower())
 
+# Check for Room_Type Value
 failed_data = []
 for door in door_collector:
     failed_door_data = []
     if not door.LookupParameter("Room_Type").HasValue:
         failed_door_data.append(output.linkify(door.Id))
-        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+        if door.LookupParameter("Mark").HasValue:
+            failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
+        else:
+            failed_door_data.append("NONE")
         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
         failed_door_data.append("ROOM_TYPE VALUE MISSING")
         failed_data.append(failed_door_data)
@@ -55,7 +59,10 @@ for door in door_collector:
 
     elif door.LookupParameter("Room_Type").AsString() == "":
         failed_door_data.append(output.linkify(door.Id))
-        failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+        if door.LookupParameter("Mark").HasValue:
+            failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
+        else:
+            failed_door_data.append("NONE")
         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
         failed_door_data.append("ROOM_TYPE VALUE MISSING")
         failed_data.append(failed_door_data)
@@ -66,7 +73,10 @@ for door in door_collector:
             continue
         else:
             failed_door_data.append(output.linkify(door.Id))
-            failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+        if door.LookupParameter("Mark").HasValue:
+            failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
+        else:
+            failed_door_data.append("NONE")
             failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
             failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
             failed_data.append(failed_door_data)
@@ -86,6 +96,8 @@ if failed_data:
     output.print_md("---") # Markdown Line Break
     script.exit()
 
+# Check if 
+
 checks = ["No. of Leaves Check", "Leaf Width Check", "Leaf Height Check", "Undercut Check", "Leaf Material Check","Leaf Elevation Check", "Leaf Face Finish Check", "Frame Material Check", "Frame Elevation Check", "Frame Finish Check"]
 select_check = forms.SelectFromList.show(checks, title="Select Door Check", width=300, height=500, button_name="Select Code", multiselect=True)
 
@@ -98,6 +110,29 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Leaf_Number").HasValue or door.Symbol.LookupParameter("Leaf_Number") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("LEAF NUMBER PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(int(excel_worksheet.cell_value(row,1))).upper())
+                    failed_data.append(failed_door_data)
+                    continue   
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO LEAF NUMBER PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(int(excel_worksheet.cell_value(row,1))).upper())
+                failed_data.append(failed_door_data)
+                continue   
+
+
             door_leaf_number = door.Symbol.LookupParameter("Leaf_Number").AsValueString()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -120,11 +155,6 @@ for user_check in select_check:
             output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK","LEVEL", "ROOM TYPE", "ERROR CODE", "CURRENT VALUE", "EXPECTED VALUE"]) # Print a Table
             print("\n\n")
             output.print_md("---") # Markdown Line Break
-            output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
-            output.print_md("---") # Markdown Line Break
-            output.print_md("**NO ROOM NUMBER FOUND**         - Room_Number Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
-            output.print_md("**MARK & ROOM_NUMBER MISMATCH**  - Room_Number & Mark Value do not Match for the Door. Run the DAR Door Add-In.") # Print a Quote
-            output.print_md("---") # Markdown Line Break
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃" .format(user_check)) # Markdown Heading 2
             output.print_md("---") # Markdown Line Break
@@ -135,6 +165,29 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Width").HasValue or door.Symbol.LookupParameter("Width") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("WIDTH PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(int(excel_worksheet.cell_value(row,2))).upper())
+                    failed_data.append(failed_door_data)
+                    continue   
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO WIDTH PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(int(excel_worksheet.cell_value(row,2))).upper())
+                failed_data.append(failed_door_data)
+                continue   
+
+
             door_width = door.Symbol.LookupParameter("Width").AsValueString()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -143,7 +196,7 @@ for user_check in select_check:
                         failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
-                        failed_door_data.append("INVALID WIDTH")
+                        failed_door_data.append("INVALID WIDTH PARAMETER FOUND")
                         failed_door_data.append(door_width.upper())
                         failed_door_data.append(str(int(excel_worksheet.cell_value(row,2))).upper())
                         failed_data.append(failed_door_data)
@@ -166,6 +219,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Height").HasValue or door.Symbol.LookupParameter("Heigth") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("HEIGHT PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(int(excel_worksheet.cell_value(row,3))).upper())
+                    failed_data.append(failed_door_data)
+                    continue   
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO HEIGHT PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(int(excel_worksheet.cell_value(row,3))).upper())
+                failed_data.append(failed_door_data)
+                continue   
+
             door_height = door.Symbol.LookupParameter("Height").AsValueString()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -174,7 +249,7 @@ for user_check in select_check:
                         failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
-                        failed_door_data.append("INVALID HIEGHT")
+                        failed_door_data.append("INVALID HIEGHT PARAMETER FOUND")
                         failed_door_data.append(door_height.upper())
                         failed_door_data.append(str(int(excel_worksheet.cell_value(row,3))).upper())
                         failed_data.append(failed_door_data)
@@ -197,6 +272,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Undercut").HasValue or door.Symbol.LookupParameter("Undercut") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("UNDERCUT PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(int(excel_worksheet.cell_value(row,4))).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO UNDERCUT PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(int(excel_worksheet.cell_value(row,4))).upper())
+                failed_data.append(failed_door_data)
+                continue  
+
             door_undercut = door.Symbol.LookupParameter("Undercut").AsValueString()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -228,6 +325,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Leaf_Material").HasValue or door.Symbol.LookupParameter("Leaf_Material") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("LEAF MATERIAL PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,5).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue   
+            except:
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("NO LEAF MATERIAL PARAMETER FOUND")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,5).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue
+
             door_leaf_material = door.Symbol.LookupParameter("Leaf_Material").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -236,7 +355,7 @@ for user_check in select_check:
                         failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
-                        failed_door_data.append("INVALID LEAF MATERIAL")
+                        failed_door_data.append("INVALID LEAF MATERIAL PARAMETER FOUND")
                         failed_door_data.append(door_leaf_material.upper())
                         failed_door_data.append(str(excel_worksheet.cell_value(row,5).lower()).upper())
                         failed_data.append(failed_door_data)
@@ -258,6 +377,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Leaf_Elevation").HasValue or door.Symbol.LookupParameter("Leaf_Elevation") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("LEAF ELEVATION PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,6).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO LEAF ELEVATION PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(excel_worksheet.cell_value(row,6).lower()).upper())
+                failed_data.append(failed_door_data)
+                continue
+
             door_leaf_elevation = door.Symbol.LookupParameter("Leaf_Elevation").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -266,7 +407,7 @@ for user_check in select_check:
                         failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
                         failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
-                        failed_door_data.append("INVALID LEAF ELEVATION")
+                        failed_door_data.append("INVALID LEAF ELEVATION PARAMETER FOUND")
                         failed_door_data.append(door_leaf_elevation.upper())
                         failed_door_data.append(str(excel_worksheet.cell_value(row,6).lower()).upper())
                         failed_data.append(failed_door_data)
@@ -289,6 +430,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Leaf_Face_Finish").HasValue or door.Symbol.LookupParameter("Leaf_Face_Finish") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("LEAF FACE FINISH PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,7).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO LEAF FACE FINISH PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(excel_worksheet.cell_value(row,7).lower()).upper())
+                failed_data.append(failed_door_data)
+                continue 
+
             door_leaf_face_finish = door.Symbol.LookupParameter("Leaf_Face_Finish").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -320,6 +483,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Frame_Material").HasValue or door.Symbol.LookupParameter("Frame_Material") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("FRAME MATERIAL PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,8).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO FRAME MATERIAL PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(excel_worksheet.cell_value(row,8).lower()).upper())
+                failed_data.append(failed_door_data)
+                continue  
+                
             door_frame_material = door.Symbol.LookupParameter("Frame_Material").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -351,6 +536,28 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Frame_Elevation").HasValue or door.Symbol.LookupParameter("Frame_Elevation") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("FRAME ELEVATION PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,9).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO FRAME ELEVATION PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(excel_worksheet.cell_value(row,9).lower()).upper())
+                failed_data.append(failed_door_data)
+                continue  
+
             door_frame_elevation = door.Symbol.LookupParameter("Frame_Elevation").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
@@ -382,6 +589,27 @@ for user_check in select_check:
         for door in door_collector:
             failed_door_data = []
             door_room_type = door.LookupParameter("Room_Type").AsString().lower()
+            try:
+                if not door.Symbol.LookupParameter("Frame_Face_Finish").HasValue or door.Symbol.LookupParameter("Frame_Face_Finish") == "":
+                    failed_door_data.append(output.linkify(door.Id))
+                    failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                    failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                    failed_door_data.append("FRAME FINISH PARAMETER EMPTY")
+                    failed_door_data.append("NONE")
+                    failed_door_data.append(str(excel_worksheet.cell_value(row,10).lower()).upper())
+                    failed_data.append(failed_door_data)
+                    continue  
+            except:
+                failed_door_data.append(output.linkify(door.Id))
+                failed_door_data.append(door.LookupParameter("Mark").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append(door.LookupParameter("Room_Type").AsString().upper())
+                failed_door_data.append("NO FRAME FINISH PARAMETER FOUND")
+                failed_door_data.append("NONE")
+                failed_door_data.append(str(excel_worksheet.cell_value(row,10).lower()).upper())
+                failed_data.append(failed_door_data)
+                continue  
             door_frame_finish = door.Symbol.LookupParameter("Frame_Face_Finish").AsValueString().lower()
             for row in range(1, excel_worksheet.nrows):
                 if door_room_type == excel_worksheet.cell_value(row,0).lower():
