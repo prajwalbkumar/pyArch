@@ -55,7 +55,7 @@ for door in door_collector:
         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
         failed_door_data.append("ROOM_TYPE VALUE MISSING")
         failed_data.append(failed_door_data)
-        break
+        continue
 
     elif door.LookupParameter("Room_Type").AsString() == "":
         failed_door_data.append(output.linkify(door.Id))
@@ -66,21 +66,20 @@ for door in door_collector:
         failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
         failed_door_data.append("ROOM_TYPE VALUE MISSING")
         failed_data.append(failed_door_data)
-        break
+        continue
     
     else:
         if door.LookupParameter("Room_Type").AsString().lower() in excel_room_types:
             continue
         else:
             failed_door_data.append(output.linkify(door.Id))
-        if door.LookupParameter("Mark").HasValue:
-            failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
-        else:
-            failed_door_data.append("NONE")
-            failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-            failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
-            failed_data.append(failed_door_data)
-            break
+            if door.LookupParameter("Mark").HasValue:
+                failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
+            else:
+                failed_door_data.append("NONE")
+                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
+                failed_data.append(failed_door_data)
 
 if failed_data:
     output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
