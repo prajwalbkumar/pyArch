@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''URS Checker'''
-__title__ = "URS Checker Live"
+__title__ = "URS Checker Link"
 __author__ = "prakritisrimal - prajwalbkumar"
 
 # IMPORTS
@@ -45,19 +45,36 @@ for link in linked_instance:
     link_name.append(link.Name)
 
 urs_instance_name = forms.SelectFromList.show(link_name, title = "Select URS File", width=600, height=600, button_name="Select File", multiselect=False)
+test_instance_name = forms.SelectFromList.show(link_name, title = "Select Test File", width=600, height=600, button_name="Select File", multiselect=False)
+
 
 if not urs_instance_name:
     script.exit()
+
+if not test_instance_name:
+    script.exit()
+
 
 for link in linked_instance:
     if urs_instance_name == link.Name:
         urs_instance = link
         break
 
+for link in linked_instance:
+    if test_instance_name == link.Name:
+        test_instance = link
+        break
+
 urs_doc = urs_instance.GetLinkDocument()
+test_doc = test_instance.GetLinkDocument()
 
 if not urs_doc:
     forms.alert("No instance found of the selected URS File.\n"
+                "Use Manage Links to Load the Link in the File!", title = "Link Missing", warn_icon = False)
+    script.exit()
+
+if not test_doc:
+    forms.alert("No instance found of the selected TEST File.\n"
                 "Use Manage Links to Load the Link in the File!", title = "Link Missing", warn_icon = False)
     script.exit()
 
@@ -67,17 +84,17 @@ if not urs_doc:
 report_metadata = {
     'Title': 'URS Comparison Report',
     'URS File Path': urs_doc.PathName,
-    'Test File': doc.PathName
+    'Test File Path': test_doc.PathName
 }
 
 # Print results
 output.print_md('# {}'.format(report_metadata['Title']))
 output.print_md('**URS File Path:** {}'.format(report_metadata['URS File Path']))
-output.print_md('**Test File Path:** {}'.format(report_metadata['Test File']))
+output.print_md('**Test File Path:** {}'.format(report_metadata['Test File Path']))
 
 # Check for Site Locations
 
-active_site_location = doc.SiteLocation
+active_site_location = test_doc.SiteLocation
 urs_site_location = urs_doc.SiteLocation
 
 failed_data = []
@@ -130,7 +147,7 @@ else:
 
 
 # Check for Grids
-active_grids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType().ToElements()
+active_grids = FilteredElementCollector(test_doc).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType().ToElements()
 urs_grids = FilteredElementCollector(urs_doc).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType().ToElements()
 
 if not active_grids:
@@ -153,7 +170,7 @@ for grid in urs_grids:
     if not grid.Name in active_grids_name:
         failed_urs_grid.append(output.linkify(grid.Id))
         failed_urs_grid.append(grid.Name) # Grid Name
-        failed_urs_grid.append("GRID MISSING IN ACTIVE DOCUMENT") # Error Code
+        failed_urs_grid.append("GRID MISSING IN TEST DOCUMENT") # Error Code
         failed_data.append(failed_urs_grid)
 
 # Check if all Active Grid Names are present in the URS Doc Grids List
@@ -190,9 +207,9 @@ if failed_data:
     output.print_md("---") # Markdown Line Break
     output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
     output.print_md("---") # Markdown Line Break
-    output.print_md("**GRID MISSING IN ACTIVE DOCUMENT**  - The active document has missing grids. It must match the URS.") # Print a Quote
-    output.print_md("**GRID MISSING IN URS DOCUMENT**     - There are extra grids or grids with incorrect names in the active document. They must match the URS.") # Print a Quote
-    output.print_md("**GRID LOCATION INCORRECT**          - The grid location in the active document is incorrect. It must match the URS") # Print a Quote
+    output.print_md("**GRID MISSING IN TEST DOCUMENT**  - The test document has missing grids. It must match the URS.") # Print a Quote
+    output.print_md("**GRID MISSING IN URS DOCUMENT**     - There are extra grids or grids with incorrect names in the test document. They must match the URS.") # Print a Quote
+    output.print_md("**GRID LOCATION INCORRECT**          - The grid location in the test document is incorrect. It must match the URS") # Print a Quote
     output.print_md("---") # Markdown Line Break
 
 else:
@@ -202,7 +219,7 @@ else:
 ##############################################
 
 # Check for Levels
-active_levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
+active_levels = FilteredElementCollector(test_doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
 urs_levels = FilteredElementCollector(urs_doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
 
 if not active_levels:
@@ -226,7 +243,7 @@ for level in urs_levels:
     if not level.Name in active_levels_name:
         failed_urs_level.append(output.linkify(level.Id))
         failed_urs_level.append(level.Name) # Level Name
-        failed_urs_level.append("LEVEL MISSING IN ACTIVE DOCUMENT") # Error Code
+        failed_urs_level.append("LEVEL MISSING IN TEST DOCUMENT") # Error Code
         failed_data.append(failed_urs_level)
 
 # Check if all Active Level Names are present in the URS Doc Levels List
@@ -259,19 +276,11 @@ if failed_data:
     output.print_md("---") # Markdown Line Break
     output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
     output.print_md("---") # Markdown Line Break
-    output.print_md("**LEVEL MISSING IN ACTIVE DOCUMENT**  - The active document has missing levels. It must match the URS.") # Print a Quote
-    output.print_md("**LEVEL MISSING IN URS DOCUMENT**     - There are extra levels or levels with incorrect names in the active document. They must match the URS.") # Print a Quote
-    output.print_md("**LEVEL LOCATION INCORRECT**          - The level location in the active document is incorrect. It must match the URS") # Print a Quote
+    output.print_md("**LEVEL MISSING IN TEST DOCUMENT**  - The test document has missing levels. It must match the URS.") # Print a Quote
+    output.print_md("**LEVEL MISSING IN URS DOCUMENT**     - There are extra levels or levels with incorrect names in the test document. They must match the URS.") # Print a Quote
+    output.print_md("**LEVEL LOCATION INCORRECT**          - The level location in the test document is incorrect. It must match the URS") # Print a Quote
     output.print_md("---") # Markdown Line Break
 
 else:
     output.print_md("##✅ URS LEVELS Checks Completed. No Issues Found 😃") # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-
-
-
-
-
-
-    
-    
+    output.print_md("---") # Markdown Line Break    
