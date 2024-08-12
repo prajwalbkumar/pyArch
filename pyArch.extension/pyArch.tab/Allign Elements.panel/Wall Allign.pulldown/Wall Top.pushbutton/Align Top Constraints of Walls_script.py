@@ -165,10 +165,9 @@ def align_walls(selected_wall_names):
                             adjusted = True
                             break
 
-                if not adjusted:
+                #if not adjusted:
                     # If no adjustment was made to align with beams, print message if needed
                     #print("No adjustment needed for wall '{}' (ID: {}).".format(wall.Name, output.linkify(wall.Id)))
-
         t.Commit()
 
 
