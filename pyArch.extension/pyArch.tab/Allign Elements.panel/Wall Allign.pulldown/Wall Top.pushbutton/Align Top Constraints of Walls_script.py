@@ -1,10 +1,7 @@
 from pyrevit import script
 from pyrevit import forms
 from Autodesk.Revit.DB import *
-
 output = script.get_output()
-doc = __revit__.ActiveUIDocument.Document
-uidoc = __revit__.ActiveUIDocument
 
 def get_wall_names():
     """Retrieve a list of wall names available in the model."""
@@ -21,28 +18,20 @@ def get_wall_names():
         return []
 
 def get_floors_above(base_level_elevation, linked_doc):
-    """Retrieve the thickness of floors above the base level and return slab bounding boxes."""
+    """Retrieve floors that are directly above the base level."""
     floors = FilteredElementCollector(linked_doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElements()
     slabs_above = []
-
+    
     for floor in floors:
         floor_level_id = floor.get_Parameter(BuiltInParameter.LEVEL_PARAM).AsElementId()
         floor_level = linked_doc.GetElement(floor_level_id)
         slab_height_offset = floor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble()
         slab_elevation = slab_height_offset + floor_level.Elevation
-
-        if slab_elevation > base_level_elevation:
-            print ("---")
-            print("Floor level elevation: {}".format(floor_level.Elevation))
-            print("Floor height offset from level: {}".format(slab_height_offset))
+        
+        if slab_elevation > base_level_elevation:  # Check if slab is above the base level
             floor_type = linked_doc.GetElement(floor.GetTypeId())
-            print("Floor type: {}".format(floor_type.LookupParameter("Type Name").AsString()))
             slab_thickness = floor_type.GetCompoundStructure().GetWidth()
-            print("Floor thickness: {}".format(slab_thickness))
-
-            bbox = floor.get_BoundingBox(None)
-            if bbox:
-                slabs_above.append((slab_thickness, bbox))
+            slabs_above.append((slab_elevation, slab_thickness))
     
     return slabs_above
 
@@ -55,6 +44,7 @@ def get_beams(linked_doc):
         try:
             bbox = beam.get_BoundingBox(None)
             if bbox:
+                # Calculate depth as the height of the bounding box
                 beam_depth = bbox.Max.Z - bbox.Min.Z
                 beam_bottom_elevation = bbox.Min.Z
                 beam_data.append((beam_bottom_elevation, beam_depth, beam))
@@ -64,75 +54,42 @@ def get_beams(linked_doc):
     return beam_data
 
 def filter_concrete_levels(levels):
-    """Filter levels to find those named with 'CL'."""
-    return [level for level in levels if "CL" in level.LookupParameter("Name").AsString()]
+    concrete_levels = [level for level in levels if "CL" in level.LookupParameter("Name").AsString()]
+    return concrete_levels
 
 def find_next_concrete_level(base_level, concrete_levels):
-    """Find the next concrete level above the base level."""
-    return next((cl for cl in concrete_levels if cl.Elevation > base_level.Elevation), None)
+    next_concrete_level = next((cl for cl in concrete_levels if cl.Elevation > base_level.Elevation), None)
+    return next_concrete_level
 
-def create_bounding_box_between_slabs(slab1_bbox, slab2_bbox):
-    """Create a bounding box that covers the space between two slabs."""
-    min_x = min(slab1_bbox.Min.X, slab2_bbox.Min.X)
-    min_y = min(slab1_bbox.Min.Y, slab2_bbox.Min.Y)
-    max_x = max(slab1_bbox.Max.X, slab2_bbox.Max.X)
-    max_y = max(slab1_bbox.Max.Y, slab2_bbox.Max.Y)
-    min_z = slab1_bbox.Max.Z  # Bottom of the first slab
-    max_z = slab2_bbox.Min.Z  # Top of the second slab
-    
-    bbox = BoundingBoxXYZ()
-    bbox.Min = XYZ(min_x, min_y, min_z)
-    bbox.Max = XYZ(max_x, max_y, max_z)
-    
-    return bbox
+def get_level_elevation(level_id):
+    """Retrieve the elevation of a level given its ElementId."""
+    level = doc.GetElement(level_id)
+    if isinstance(level, Level):
+        return level.Elevation
+    return None
 
-from Autodesk.Revit.DB import Outline
+doc = __revit__.ActiveUIDocument.Document
+uidoc = __revit__.ActiveUIDocument
 
-def draw_bounding_box(bbox, color, doc):
-    """Draw the bounding box as a series of lines in Revit."""
-    # Create a new Transaction for drawing
-    with Transaction(doc, "Draw Bounding Box") as t:
-        t.Start()
-        
-        # Define the line creation API
-        def create_line(start, end):
-            return Line.CreateBound(start, end)
-        
-        # Define the bounding box coordinates
-        lines = []
-        min_pt = bbox.Min
-        max_pt = bbox.Max
-        
-        # Create lines for each edge of the bounding box
-        lines.append(create_line(XYZ(min_pt.X, min_pt.Y, min_pt.Z), XYZ(max_pt.X, min_pt.Y, min_pt.Z)))
-        lines.append(create_line(XYZ(max_pt.X, min_pt.Y, min_pt.Z), XYZ(max_pt.X, max_pt.Y, min_pt.Z)))
-        lines.append(create_line(XYZ(max_pt.X, max_pt.Y, min_pt.Z), XYZ(min_pt.X, max_pt.Y, min_pt.Z)))
-        lines.append(create_line(XYZ(min_pt.X, min_pt.Y, min_pt.Z), XYZ(min_pt.X, min_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(max_pt.X, min_pt.Y, min_pt.Z), XYZ(max_pt.X, min_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(max_pt.X, max_pt.Y, min_pt.Z), XYZ(max_pt.X, max_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(min_pt.X, max_pt.Y, min_pt.Z), XYZ(min_pt.X, max_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(min_pt.X, min_pt.Y, max_pt.Z), XYZ(max_pt.X, min_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(min_pt.X, min_pt.Y, max_pt.Z), XYZ(min_pt.X, max_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(max_pt.X, min_pt.Y, max_pt.Z), XYZ(max_pt.X, max_pt.Y, max_pt.Z)))
-        lines.append(create_line(XYZ(min_pt.X, max_pt.Y, max_pt.Z), XYZ(max_pt.X, max_pt.Y, max_pt.Z)))
-        
-        # Create the lines in the document
-        for line in lines:
-            doc.Create.NewModelCurve(line, doc.ActiveView.SketchPlane)
-        
-        t.Commit()
+# Prompt user to select a linked model
+linked_files = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+linked_file_names = [link.Name for link in linked_files]
+selected_link_name = forms.SelectFromList.show(linked_file_names, title='Select Linked Model', button_name='Select')
 
-def print_bounding_box_details(bbox, label):
-    """Print details of a bounding box and draw it."""
-    print("{} - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-        label,
-        bbox.Min.X, bbox.Min.Y, bbox.Min.Z,
-        bbox.Max.X, bbox.Max.Y, bbox.Max.Z
-    ))
-    draw_bounding_box(bbox, "blue", doc)
+# Get the selected linked document
+selected_link = None
+for link in linked_files:
+    if link.Name == selected_link_name:
+        selected_link = link
+        break
 
-def align_walls(selected_wall_names, linked_doc):
-    """Align walls based on their top constraints and slab thickness."""
+if not selected_link:
+    forms.alert("No linked file selected or file not found.")
+    script.exit()
+
+linked_doc = selected_link.GetLinkDocument()
+
+def align_walls(selected_wall_names):
     levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
     concrete_levels = filter_concrete_levels(levels)
     sorted_concrete_levels = sorted(concrete_levels, key=lambda lvl: lvl.Elevation)
@@ -147,8 +104,12 @@ def align_walls(selected_wall_names, linked_doc):
                 unc_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
                 wall_type = doc.GetElement(wall.WallType.Id)
 
-                if wall_type and wall_type.FamilyName == 'Curtain Wall':
-                    print("Warning: Wall '{}' (ID: {}) is a curtain wall. Moving the wall might have changed the divisions of the panels.".format(wall.Name, output.linkify(wall.Id)))
+                if wall_type:
+                    if wall_type.FamilyName == 'Curtain Wall':
+                        print("Warning: Wall '{}' (ID: {}) is a curtain wall. Moving the wall might have changed the divisions of the panels.".format(wall.Name, output.linkify(wall.Id)))
+                else:
+                    forms.alert("Error: Wall type is None for wall Name {}".format(wall.Name))
+                    continue
 
                 if unc_height_param:
                     try:
@@ -156,7 +117,7 @@ def align_walls(selected_wall_names, linked_doc):
                         unc_height_mm = unc_height_value * 304.8  # Convert feet to millimeters
                         
                         if -1500 <= unc_height_mm <= 1500:
-                            print("Wall Name: {} (ID: {}) has an unconnected height in the range of -1500 mm to 1500 mm. Skipping top constraint change.".format(wall.Name, output.linkify(wall.Id)))
+                            print("Wall Name: {} (ID: {}) has an unconnected height outside the range of -1500 mm to 1500 mm. Skipping top constraint change.".format(wall.Name, output.linkify(wall.Id)))
                             continue  # Skip to the next wall
                     except Exception as e:
                         forms.alert("Error processing unconnected height for wall Name {}: {}".format(wall.Name, e))
@@ -172,74 +133,46 @@ def align_walls(selected_wall_names, linked_doc):
                 next_concrete_level = find_next_concrete_level(base_level, sorted_concrete_levels)
 
                 if next_concrete_level:
+                    wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(next_concrete_level.Id)
+                    # Get the slabs above the base level
                     slabs_above = get_floors_above(base_level.Elevation, linked_doc)
+                    
+                    slab_thickness = 0
+                    if slabs_above:
+                        # Get the thickness of the slab closest to the wall
+                        slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
+                        wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-slab_thickness)
+                    else:
+                        #print("No slabs found above level: {}".format(next_concrete_level.LookupParameter("Name").AsString()))
+                        pass  # Continue to adjust based on beams
 
-                    if len(slabs_above) > 0:
-                        # Check the first slab
-                        first_slab_thickness, first_slab_bbox = slabs_above[0]
-                        slab_bottom_elevation = first_slab_bbox.Min.Z
-                        slab_top_elevation = first_slab_bbox.Max.Z
+                else:
+                    print("No next concrete level found for wall ID: {}".format(wall.Id.IntegerValue))
 
-                        # Get the bounding box of the wall
-                        wall_bbox = wall.get_BoundingBox(None)
-                        if wall_bbox:
-                            # Create outline for wall and slab
-                            wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
-                            slab_outline = Outline(
-                                XYZ(first_slab_bbox.Min.X, first_slab_bbox.Min.Y, slab_bottom_elevation),
-                                XYZ(first_slab_bbox.Max.X, first_slab_bbox.Max.Y, slab_top_elevation)
-                            )
-
-                            # Print debug information for wall and slab outlines
-                            print("Wall Outline:")
-                            print_bounding_box_details(wall_bbox, "Wall")
-                            print("Slab Outline:")
-                            print_bounding_box_details(first_slab_bbox, "Slab")
-
-                            # Check if the wall outline intersects with the slab outline
-                            if wall_outline.Intersects(slab_outline, 0.00001):
-                                slab_thickness = first_slab_thickness
-                                print("Wall '{}' (ID: {}) intersects with the first slab. Slab thickness: {:.2f} mm.".format(wall.Name, output.linkify(wall.Id), slab_thickness))
-                                wall_top_offset_param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
-                                if wall_top_offset_param:
-                                    wall_top_offset_param.Set(0)
-                                    print("Wall '{}' (ID: {}) adjusted to align with the first slab (thickness: {}).".format(wall.Name, output.linkify(wall.Id), slab_thickness))
-                            else:
-                                print("Wall '{}' (ID: {}) does not intersect with the first slab bounding box.".format(wall.Name, output.linkify(wall.Id)))
-
-                    for beam_bottom_elevation, beam_depth, beam in beams:
-                        if beam_bottom_elevation > base_level.Elevation:
-                            new_top_offset = beam_bottom_elevation - base_level.Elevation
-                            if beam_depth:
-                                new_top_offset = beam_depth
+                # Adjust wall top based on beams
+                adjusted = False
+                for beam_bottom_elevation, beam_depth, beam in beams:
+                    if beam_bottom_elevation > base_level.Elevation:
+                        new_top_offset = beam_bottom_elevation - base_level.Elevation
+                        if beam_depth:
+                            new_top_offset = beam_depth
+                        current_offset = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).AsDouble()
+                        
+                        if slab_thickness and abs(current_offset - (-slab_thickness)) < 1e-3:
+                            # The wall is already aligned with the slab bottom, adjust to beam
                             wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-new_top_offset)
                             #print("Wall '{}' (ID: {}) adjusted to align with beam (ID: {}).".format(wall.Name, output.linkify(wall.Id), output.linkify(beam.Id)))
+                            adjusted = True
                             break
+
+                if not adjusted:
+                    # If no adjustment was made to align with beams, print message if needed
+                    #print("No adjustment needed for wall '{}' (ID: {}).".format(wall.Name, output.linkify(wall.Id)))
 
         t.Commit()
 
 
-
 def main():
-    # Prompt user to select a linked model
-    linked_files = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
-    linked_file_names = [link.Name for link in linked_files]
-    selected_link_name = forms.SelectFromList.show(linked_file_names, title='Select Linked Model', button_name='Select')
-
-    # Get the selected linked document
-    selected_link = None
-    for link in linked_files:
-        if link.Name == selected_link_name:
-            selected_link = link
-            break
-
-    if not selected_link:
-        forms.alert("No linked file selected or file not found.")
-        script.exit()
-
-    linked_doc = selected_link.GetLinkDocument()
-
-    # Retrieve wall names and prompt user to select walls
     wall_names = get_wall_names()
     
     if not wall_names:
@@ -252,11 +185,9 @@ def main():
         forms.alert('No wall names selected. Exiting script.')
         return
 
-    align_walls(selected_wall_names, linked_doc)
+    align_walls(selected_wall_names)
     
     forms.alert('Script complete!')
-
-
 
 if __name__ == '__main__':
     main()
