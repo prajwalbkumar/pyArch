@@ -24,6 +24,48 @@ def get_wall_names():
         forms.alert('Error retrieving wall names: {}'.format(e))
         return []
 
+def extract_walls_from_groups(elements):
+    """Extract walls from groups if they are part of a group."""
+    walls = []
+    for elem in elements:
+        if isinstance(elem, Group):
+            for group_elem in elem.GroupMembers:
+                if isinstance(group_elem, Wall):
+                    walls.append(group_elem)
+        else:
+            if isinstance(elem, Wall):
+                walls.append(elem)
+    return walls
+
+def get_cl_and_ffl_levels(levels):
+    """Identify Concrete Levels (CL) and Floor Finish Levels (FFL) from levels."""
+    cl_levels = {}
+    ffl_levels = {}
+    
+    for level in levels:
+        level_name = level.Name
+        if "CL" in level_name:
+            cl_levels[level.Id] = level
+        elif "FFL" in level_name:
+            ffl_levels[level.Id] = level
+    
+    return cl_levels, ffl_levels
+
+def create_level_pairs(cl_levels, ffl_levels):
+    """Create pairs of CL and FFL levels."""
+    level_pairs = {}
+    
+    cl_list = sorted(cl_levels.values(), key=lambda l: l.Elevation)
+    ffl_list = sorted(ffl_levels.values(), key=lambda l: l.Elevation)
+    
+    for cl in cl_list:
+        for ffl in ffl_list:
+            if ffl.Elevation > cl.Elevation:
+                level_pairs[cl.Id] = ffl.Id
+                break
+    
+    return level_pairs
+
 def update_base_offset(walls):
     """Update the base offset parameter of walls, setting it to 0 based on specified conditions."""
     with Transaction(doc, "Update Wall Base Offset") as t:
@@ -55,9 +97,9 @@ def update_base_offset(walls):
             t.RollBack()
             forms.alert('Error during base offset update: {}'.format(e))
 
-
 def move_walls_based_on_direction(movement_direction, selected_wall_names):
     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+    walls = extract_walls_from_groups(walls)  # Extract walls from groups
     levels = FilteredElementCollector(doc).OfClass(Level).ToElements()
 
     if not walls:
@@ -68,11 +110,9 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         return
 
     walls = [wall for wall in walls if wall.Name in selected_wall_names]
-    levels = sorted(levels, key=lambda x: x.Elevation)
-
-    level_pairs = {}
-    for i in range(0, len(levels) - 1, 2):
-        level_pairs[levels[i].Id] = levels[i + 1].Id
+    
+    cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
+    level_pairs = create_level_pairs(cl_levels, ffl_levels)
 
     update_base_offset(walls)
     walls_not_moved = []
@@ -86,25 +126,21 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                 wall_level = doc.GetElement(wall_level_id)
                 wall_type = doc.GetElement(wall.WallType.Id)
 
-                if wall_type:
-                    if wall_type.FamilyName == 'Curtain Wall':
-                        forms.alert("Warning: Wall '{}' is a curtain wall. Moving the wall may change the divisions of the panels.".format(wall_name))
-                else:
-                    forms.alert("Error: Wall type is None for wall Name {}".format(wall_name))
-                    continue
-
+                if wall_type and wall_type.FamilyName == 'Curtain Wall':
+                    print("Warning: Wall {} (ID: {}) is a curtain wall. Moving the wall might have changed the divisions of the panels.".format(wall_name, output.linkify(wall.Id)))
+                    
                 if wall_level:
                     wall_level_name = wall_level.Name if wall_level.Name else "Unknown Level"
                     
                     if movement_direction == 'CL to FFL':
                         if "CL" in wall_level_name:
-                            if wall_level_id in level_pairs.keys():
-                                target_level_id = level_pairs[wall_level_id]
+                            if wall_level_id in level_pairs:
+                                target_ffl_id = level_pairs[wall_level_id]
                                 level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
                                 if level_param:
-                                    level_param.Set(target_level_id)
+                                    level_param.Set(target_ffl_id)
                                 else:
-                                    forms.alert("Wall Name {} does not have a 'Base Constraint' parameter.".format(wall_name))
+                                    walls_not_moved.append((wall_name, wall.Id))
                     elif movement_direction == 'FFL to CL':
                         if "FFL" in wall_level_name:
                             if wall_level_id in level_pairs.values():
@@ -114,18 +150,19 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                                         if level_param:
                                             level_param.Set(cl_id)
                                         else:
-                                            forms.alert("Wall Name {} does not have a 'Base Constraint' parameter.".format(wall_name))
+                                            walls_not_moved.append((wall_name, wall.Id))
                                         break
                 else:
-                    forms.alert("Error: Wall level is None for wall Name {}".format(wall_name))
+                    walls_not_moved.append((wall_name, wall.Id))
             txn.Commit()
         except Exception as e:
             txn.RollBack()
             forms.alert('Error during wall movement: {}'.format(e))
+    
     if walls_not_moved:
-        print("The following walls were not moved to the specified levels:")
+        print("The following walls were not moved:")
         for wall_name, wall_id in walls_not_moved:
-            print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))            
+            print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
 
 def main():
     wall_names = get_wall_names()
