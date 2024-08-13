@@ -133,7 +133,6 @@ if failed_counter:
             print (line)
         script.exit()
     elif report =="Auto Correct Values [BETA]":
-        print("XXXXXX")
         t = Transaction(doc, "Filling Door Fire Ratings")
         t.Start()
         for door in failed_doors:
