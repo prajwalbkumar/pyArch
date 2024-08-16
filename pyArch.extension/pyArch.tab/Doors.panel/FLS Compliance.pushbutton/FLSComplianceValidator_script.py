@@ -217,7 +217,7 @@ for door in door_collector:
                 door_mark = door.LookupParameter("Mark").AsString().upper()
             
             if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                door_mark = "NONE"
+                door_room_name = "NONE"
             else:
                 door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
@@ -251,7 +251,7 @@ if skipped_doors:
             door_mark = door.LookupParameter("Mark").AsString().upper()
         
         if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-            door_mark = "NONE"
+            door_room_name = "NONE"
         else:
             door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
