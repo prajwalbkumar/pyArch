@@ -26,26 +26,29 @@ def get_floors_above(base_level_elevation, linked_doc):
     slabs_above = []
 
     for floor in floors:
-        floor_level_id = floor.get_Parameter(BuiltInParameter.LEVEL_PARAM).AsElementId()
-        floor_level = linked_doc.GetElement(floor_level_id)
-        slab_height_offset = floor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble()
-        slab_elevation = slab_height_offset + floor_level.Elevation
-        slab_id = floor.Id
+        try:
+            floor_level_id = floor.get_Parameter(BuiltInParameter.LEVEL_PARAM).AsElementId()
+            floor_level = linked_doc.GetElement(floor_level_id)
+            slab_height_offset = floor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble()
+            slab_elevation = slab_height_offset + floor_level.Elevation
+            slab_id = floor.Id
 
-        if slab_elevation > base_level_elevation:
-            floor_type = linked_doc.GetElement(floor.GetTypeId())
-            slab_thickness = floor_type.GetCompoundStructure().GetWidth()
-            bbox = floor.get_BoundingBox(None)
-            if bbox:
-                slabs_above.append((slab_thickness, slab_height_offset, bbox, slab_id))
-    
+            if slab_elevation > base_level_elevation:
+                floor_type = linked_doc.GetElement(floor.GetTypeId())
+                slab_thickness = floor_type.GetCompoundStructure().GetWidth()
+                bbox = floor.get_BoundingBox(None)
+                if bbox:
+                    slabs_above.append((slab_thickness, slab_height_offset, bbox, slab_id))
+        except Exception as e:
+            print("Error processing floor: {}".format(e))
+
     return slabs_above
 
 def get_beams(linked_doc):
     """Retrieve beams and their depths from the linked document."""
     beams = FilteredElementCollector(linked_doc).OfCategory(BuiltInCategory.OST_StructuralFraming).WhereElementIsNotElementType().ToElements()
     beam_data = []
-    
+
     for beam in beams:
         try:
             bbox = beam.get_BoundingBox(None)
@@ -55,7 +58,7 @@ def get_beams(linked_doc):
                 beam_data.append((beam_bottom_elevation, beam_depth, beam))
         except Exception as e:
             print("Error retrieving beam data: {}".format(e))
-    
+
     return beam_data
 
 def filter_concrete_levels(levels):
@@ -92,17 +95,16 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
             XYZ(slab_bbox.Max.X, slab_bbox.Max.Y, wall_bbox.Max.Z)
         )
 
-        # Debug information
         print("---")
         print("Slab thickness: {}, Slab height offset: {}, Slab ID: {}".format(slab_thickness, slab_height_offset, output.linkify(slab_id)))
-        print("Wall Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-            wall_bbox.Min.X, wall_bbox.Min.Y, wall_bbox.Min.Z,
-            wall_bbox.Max.X, wall_bbox.Max.Y, wall_bbox.Max.Z
-        ))
-        print("Slab Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-            slab_bbox.Min.X, slab_bbox.Min.Y, slab_bottom_elevation,
-            slab_bbox.Max.X, slab_bbox.Max.Y, slab_top_elevation
-        ))
+        #print("Wall Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
+            #wall_bbox.Min.X, wall_bbox.Min.Y, wall_bbox.Min.Z,
+           # wall_bbox.Max.X, wall_bbox.Max.Y, wall_bbox.Max.Z
+        #))
+        #print("Slab Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
+            #slab_bbox.Min.X, slab_bbox.Min.Y, slab_bottom_elevation,
+            #slab_bbox.Max.X, slab_bbox.Max.Y, slab_top_elevation
+        #))
 
         if wall_outline.Intersects(slab_outline, 1e-3):  # Increased tolerance to 1e-3
             wall_top_offset_param = slab_thickness + abs(slab_height_offset)
@@ -112,6 +114,64 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
             print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
                 wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness
             ))
+
+            # Split wall at intersection with slab
+            split_wall_at_intersection(wall, slab_bbox)
+
+from Autodesk.Revit.DB import Transaction, Wall, Line, XYZ, SetComparisonResult
+
+def split_wall_at_intersection(doc, wall, slab_bbox):
+    """Split the wall at the intersection with the slab."""
+    wall_curve = wall.Location.Curve
+    wall_thickness = wall.Width
+
+    # Calculate the wall's normal vector
+    wall_direction = wall_curve.GetEndPoint(1) - wall_curve.GetEndPoint(0)
+    wall_normal = XYZ.BasisZ.CrossProduct(wall_direction.Normalize())
+
+    # Calculate the extension points of the intersection line
+    intersection_point = wall_curve.Project(slab_bbox.Min).XYZPoint
+    slab_line_start = intersection_point - wall_normal * (wall_thickness / 2)
+    slab_line_end = intersection_point + wall_normal * (wall_thickness / 2)
+    slab_line = Line.CreateBound(slab_line_start, slab_line_end)
+
+    print("Wall Curve Start: ({:.2f}, {:.2f}, {:.2f})".format(wall_curve.GetEndPoint(0).X, wall_curve.GetEndPoint(0).Y, wall_curve.GetEndPoint(0).Z))
+    print("Wall Curve End: ({:.2f}, {:.2f}, {:.2f})".format(wall_curve.GetEndPoint(1).X, wall_curve.GetEndPoint(1).Y, wall_curve.GetEndPoint(1).Z))
+    print("Intersection Point: ({:.2f}, {:.2f}, {:.2f})".format(intersection_point.X, intersection_point.Y, intersection_point.Z))
+    print("Slab Line Start: ({:.2f}, {:.2f}, {:.2f})".format(slab_line_start.X, slab_line_start.Y, slab_line_start.Z))
+    print("Slab Line End: ({:.2f}, {:.2f}, {:.2f})".format(slab_line_end.X, slab_line_end.Y, slab_line_end.Z))
+
+    # Start a transaction to modify the wall
+    transaction = Transaction(doc, "Split Wall at Intersection")
+    transaction.Start()
+
+    try:
+        # Split the wall by creating a new wall at the intersection point
+        wall_location = wall.Location
+        wall_location_curve = wall_location.Curve
+
+        # Split the wall at the intersection point
+        new_wall_start = wall_location_curve.GetEndPoint(0)
+        new_wall_end = intersection_point
+
+        print("New Wall Start: ({:.2f}, {:.2f}, {:.2f})".format(new_wall_start.X, new_wall_start.Y, new_wall_start.Z))
+        print("New Wall End (Intersection Point): ({:.2f}, {:.2f}, {:.2f})".format(new_wall_end.X, new_wall_end.Y, new_wall_end.Z))
+
+        if new_wall_start.DistanceTo(new_wall_end) > 1e-6:  # Ensure the wall isn't too short after the split
+            # Use Revit API to create a new wall segment
+            split_curve = Line.CreateBound(new_wall_start, new_wall_end)
+            wall_location.Curve = split_curve
+
+            print("Wall '{}' (ID: {}) split at intersection with slab.".format(wall.Name, wall.Id))
+        else:
+            print("Warning: Intersection point too close to wall start. Skipping split.")
+        
+        # Commit the transaction
+        transaction.Commit()
+    except Exception as e:
+        print("Error splitting wall: {}".format(e))
+        transaction.RollBack()
+
 
 def align_walls(selected_wall_names, linked_doc):
     levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
@@ -160,17 +220,24 @@ def align_walls(selected_wall_names, linked_doc):
 
                 if next_concrete_level:
                     wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(next_concrete_level.Id)
+                    
                     # Get the slabs above the base level
                     slabs_above = get_floors_above(base_level.Elevation, linked_doc)
+                    print("Slabs above: {}".format(len(slabs_above)))
+                    
+                    # Split wall at intersections before adjusting top offset
+                    split_wall_at_intersection(wall, slabs_above[0][2])  # Use the bounding box of the first slab for splitting
                     
                     slab_thickness = 0
-                    if slabs_above:
+                    if len(slabs_above) > 0:
                         # Adjust wall top based on slabs
                         adjust_wall_top_offset(wall, slabs_above)
                         # Get the thickness of the slab closest to the wall
                         slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
                         wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-slab_thickness)
-                        adjusted_walls.append(wall)  # Add to the list of adjusted walls
+                    if len(slabs_above) > 1:
+                        print("Adjusting wall '{}' based on slabs.".format(wall.Name))
+                        adjust_wall_top_offset(wall, slabs_above)
 
                 # Adjust wall top based on beams
                 for beam_bottom_elevation, beam_depth, beam in beams:
@@ -185,10 +252,14 @@ def align_walls(selected_wall_names, linked_doc):
                             wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-new_top_offset)
                             adjusted_walls.append(wall)  # Add to the list of adjusted walls
                             break  # Exit loop after adjustment
+                            
+                    # Split wall at intersections before adjusting top offset
+                    split_wall_at_intersection(wall, slabs_above[0][2])  # Use the bounding box of the first slab for splitting
 
         t.Commit()
 
     return adjusted_walls
+
 
 def main():
     # Prompt user to select a linked model
