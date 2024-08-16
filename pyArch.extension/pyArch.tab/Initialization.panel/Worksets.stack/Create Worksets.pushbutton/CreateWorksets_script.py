@@ -5,10 +5,10 @@ __author__ = "prajwalbkumar - prakritisrimal"
 
 
 # Import Libraries
-from Autodesk.Revit import DB
-from pyrevit import revit
-from pyrevit import forms, script
-import os
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.ApplicationServices import *
+from Autodesk.Revit.UI import UIDocument
+from pyrevit import revit, forms, script
 import csv
 
 # Read all the Rows from the CSV Files as Lists
@@ -28,8 +28,8 @@ def readfile():
 def create_worksets(doc, workset_names):
     counter = 0
     for name in workset_names:
-        if DB.WorksetTable.IsWorksetNameUnique(doc, name):
-            DB.Workset.Create(doc, name)
+        if WorksetTable.IsWorksetNameUnique(doc, name):
+            Workset.Create(doc, name)
             counter += 1
     return counter
 
@@ -39,8 +39,7 @@ doc = __revit__.ActiveUIDocument.Document
 
 if not doc.IsWorkshared:
     try:
-        with revit.Transaction("Create Workshared Model"):
-            doc.EnableWorksharing("Shared Grids and Levels", "Workset1")
+        doc.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
     except:
         forms.alert("File not Workshared - Create a Workshared Model First!", title='Script Cancelled')
         script.exit()
