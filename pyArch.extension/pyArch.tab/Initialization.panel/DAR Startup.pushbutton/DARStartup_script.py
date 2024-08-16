@@ -16,24 +16,24 @@ output = script.get_output()
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
 
-# if rvt_year == 2023:
-#     template_path = r"K:\BIM\2023\Revit\Dar\Templates\AR_Template_Dar_R23.rte"
+if rvt_year == 2023:
+    template_path = r"K:\BIM\2023\Revit\Dar\Templates\AR_Template_Dar_R23.rte"
 
-# elif rvt_year == 2022:
-#     template_path = r"K:\BIM\2022\Revit\Dar\Templates\AR_Template_Dar_R22.rte"
+elif rvt_year == 2022:
+    template_path = r"K:\BIM\2022\Revit\Dar\Templates\AR_Template_Dar_R22.rte"
 
 
-# # Creating a new Document
-# new_document = app.NewProjectDocument(template_path)
+# Creating a new Document
+new_document = app.NewProjectDocument(template_path)
 
-# # Create a Workshared Model
-# new_document.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
+# Create a Workshared Model
+new_document.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
 
-# # Prompt user to select a destination folder
-# save_folder = forms.pick_folder(title="Select Destination Folder")
-# if not save_folder:
-#     forms.alert("No folder selected. Exiting the script.", title = "File Not Created", warn_icon=True)
-#     script.exit()
+# Prompt user to select a destination folder
+save_folder = forms.pick_folder(title="Select Destination Folder")
+if not save_folder:
+    forms.alert("No folder selected. Exiting the script.", title = "File Not Created", warn_icon=True)
+    script.exit()
     
 
 # Prompt user to input the project file name
