@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+'''Align wall top to slab/beam bottom'''
+
+__title__ = "Wall Top"
+__author__ = "prakritisrimal"
+
 from pyrevit import script
 from pyrevit import forms
 from Autodesk.Revit.DB import *
@@ -69,111 +75,46 @@ def find_next_concrete_level(base_level, concrete_levels):
     """Find the next concrete level above the base level."""
     return next((cl for cl in concrete_levels if cl.Elevation > base_level.Elevation), None)
 
-def print_bounding_box_details(bbox, label):
-    """Print details of a bounding box."""
-    print("{} - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-        label,
-        bbox.Min.X, bbox.Min.Y, bbox.Min.Z,
-        bbox.Max.X, bbox.Max.Y, bbox.Max.Z
-    ))
-
 def adjust_wall_top_offset(wall, filtered_slabs_above):
     wall_bbox = wall.get_BoundingBox(None)
-    if wall_bbox is None:
-        print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
-        return
+    #if wall_bbox is None:
+        #print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
+        #return
 
     wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
+
+    adjusted = False  # Track if any adjustments were made
 
     for slab in filtered_slabs_above:
         slab_thickness, slab_height_offset, slab_bbox, slab_id = slab
         slab_bottom_elevation = slab_bbox.Min.Z
         slab_top_elevation = slab_bbox.Max.Z
 
-        slab_outline = Outline(
-            XYZ(slab_bbox.Min.X, slab_bbox.Min.Y, wall_bbox.Min.Z),
-            XYZ(slab_bbox.Max.X, slab_bbox.Max.Y, wall_bbox.Max.Z)
-        )
+        slab_outline = Outline(slab_bbox.Min, slab_bbox.Max)
+        if wall_outline.Intersects(slab_outline, 1e-3):
+    # Only consider as intersecting if there's an overlap in all dimensions (X, Y, and Z)
+           if (wall_bbox.Min.Z < slab_bbox.Max.Z and wall_bbox.Max.Z > slab_bbox.Min.Z):
+               wall_top_offset_param = slab_thickness + abs(slab_height_offset)
+               current_offset = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).AsDouble()
+               new_offset = -wall_top_offset_param if current_offset == 0 else min(current_offset, -wall_top_offset_param)
+               wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(new_offset)
+               #print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
+                    #wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness))
 
-        print("---")
-        print("Slab thickness: {}, Slab height offset: {}, Slab ID: {}".format(slab_thickness, slab_height_offset, output.linkify(slab_id)))
-        #print("Wall Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-            #wall_bbox.Min.X, wall_bbox.Min.Y, wall_bbox.Min.Z,
-           # wall_bbox.Max.X, wall_bbox.Max.Y, wall_bbox.Max.Z
-        #))
-        #print("Slab Bounding Box - Min: ({:.2f}, {:.2f}, {:.2f}), Max: ({:.2f}, {:.2f}, {:.2f})".format(
-            #slab_bbox.Min.X, slab_bbox.Min.Y, slab_bottom_elevation,
-            #slab_bbox.Max.X, slab_bbox.Max.Y, slab_top_elevation
-        #))
+    #if not adjusted:
+        #print("No adjustments made for wall '{}' (ID: {})".format(wall.Name, output.linkify(wall.Id)))
 
-        if wall_outline.Intersects(slab_outline, 1e-3):  # Increased tolerance to 1e-3
-            wall_top_offset_param = slab_thickness + abs(slab_height_offset)
-            current_offset = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).AsDouble()
-            new_offset = -wall_top_offset_param if current_offset == 0 else min(current_offset, -wall_top_offset_param)
-            wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(new_offset)
-            print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
-                wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness
-            ))
+def check_unconnected_height(wall):
+    """Check the unconnected height of a wall and generate a warning if greater than 10,000 mm."""
+    unc_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
+    if unc_height_param:
+        unc_height_value = unc_height_param.AsDouble()
+        unc_height_mm = unc_height_value * 304.8  # Convert feet to millimeters
+        if unc_height_mm > 10000:
+            print("Warning: Wall '{}' (ID: {}) has an unconnected height greater than 10,000 mm.".format(
+                wall.Name, output.linkify(wall.Id)))
 
-            # Split wall at intersection with slab
-            split_wall_at_intersection(wall, slab_bbox)
-
-from Autodesk.Revit.DB import Transaction, Wall, Line, XYZ, SetComparisonResult
-
-def split_wall_at_intersection(doc, wall, slab_bbox):
-    """Split the wall at the intersection with the slab."""
-    wall_curve = wall.Location.Curve
-    wall_thickness = wall.Width
-
-    # Calculate the wall's normal vector
-    wall_direction = wall_curve.GetEndPoint(1) - wall_curve.GetEndPoint(0)
-    wall_normal = XYZ.BasisZ.CrossProduct(wall_direction.Normalize())
-
-    # Calculate the extension points of the intersection line
-    intersection_point = wall_curve.Project(slab_bbox.Min).XYZPoint
-    slab_line_start = intersection_point - wall_normal * (wall_thickness / 2)
-    slab_line_end = intersection_point + wall_normal * (wall_thickness / 2)
-    slab_line = Line.CreateBound(slab_line_start, slab_line_end)
-
-    print("Wall Curve Start: ({:.2f}, {:.2f}, {:.2f})".format(wall_curve.GetEndPoint(0).X, wall_curve.GetEndPoint(0).Y, wall_curve.GetEndPoint(0).Z))
-    print("Wall Curve End: ({:.2f}, {:.2f}, {:.2f})".format(wall_curve.GetEndPoint(1).X, wall_curve.GetEndPoint(1).Y, wall_curve.GetEndPoint(1).Z))
-    print("Intersection Point: ({:.2f}, {:.2f}, {:.2f})".format(intersection_point.X, intersection_point.Y, intersection_point.Z))
-    print("Slab Line Start: ({:.2f}, {:.2f}, {:.2f})".format(slab_line_start.X, slab_line_start.Y, slab_line_start.Z))
-    print("Slab Line End: ({:.2f}, {:.2f}, {:.2f})".format(slab_line_end.X, slab_line_end.Y, slab_line_end.Z))
-
-    # Start a transaction to modify the wall
-    transaction = Transaction(doc, "Split Wall at Intersection")
-    transaction.Start()
-
-    try:
-        # Split the wall by creating a new wall at the intersection point
-        wall_location = wall.Location
-        wall_location_curve = wall_location.Curve
-
-        # Split the wall at the intersection point
-        new_wall_start = wall_location_curve.GetEndPoint(0)
-        new_wall_end = intersection_point
-
-        print("New Wall Start: ({:.2f}, {:.2f}, {:.2f})".format(new_wall_start.X, new_wall_start.Y, new_wall_start.Z))
-        print("New Wall End (Intersection Point): ({:.2f}, {:.2f}, {:.2f})".format(new_wall_end.X, new_wall_end.Y, new_wall_end.Z))
-
-        if new_wall_start.DistanceTo(new_wall_end) > 1e-6:  # Ensure the wall isn't too short after the split
-            # Use Revit API to create a new wall segment
-            split_curve = Line.CreateBound(new_wall_start, new_wall_end)
-            wall_location.Curve = split_curve
-
-            print("Wall '{}' (ID: {}) split at intersection with slab.".format(wall.Name, wall.Id))
-        else:
-            print("Warning: Intersection point too close to wall start. Skipping split.")
-        
-        # Commit the transaction
-        transaction.Commit()
-    except Exception as e:
-        print("Error splitting wall: {}".format(e))
-        transaction.RollBack()
-
-
-def align_walls(selected_wall_names, linked_doc):
+def align_walls(selected_wall_names, linked_doc, adjustment_type):
     levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
     concrete_levels = filter_concrete_levels(levels)
     sorted_concrete_levels = sorted(concrete_levels, key=lambda lvl: lvl.Elevation)
@@ -220,24 +161,17 @@ def align_walls(selected_wall_names, linked_doc):
 
                 if next_concrete_level:
                     wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(next_concrete_level.Id)
-                    
                     # Get the slabs above the base level
                     slabs_above = get_floors_above(base_level.Elevation, linked_doc)
-                    print("Slabs above: {}".format(len(slabs_above)))
-                    
-                    # Split wall at intersections before adjusting top offset
-                    split_wall_at_intersection(wall, slabs_above[0][2])  # Use the bounding box of the first slab for splitting
                     
                     slab_thickness = 0
-                    if len(slabs_above) > 0:
+                    if slabs_above:
                         # Adjust wall top based on slabs
                         adjust_wall_top_offset(wall, slabs_above)
                         # Get the thickness of the slab closest to the wall
                         slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
                         wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-slab_thickness)
-                    if len(slabs_above) > 1:
-                        print("Adjusting wall '{}' based on slabs.".format(wall.Name))
-                        adjust_wall_top_offset(wall, slabs_above)
+                        adjusted_walls.append(wall)   # Add to the list of adjusted walls
 
                 # Adjust wall top based on beams
                 for beam_bottom_elevation, beam_depth, beam in beams:
@@ -251,17 +185,28 @@ def align_walls(selected_wall_names, linked_doc):
                             # Adjust wall to beam bottom
                             wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-new_top_offset)
                             adjusted_walls.append(wall)  # Add to the list of adjusted walls
-                            break  # Exit loop after adjustment
-                            
-                    # Split wall at intersections before adjusting top offset
-                    split_wall_at_intersection(wall, slabs_above[0][2])  # Use the bounding box of the first slab for splitting
+                            break   # Exit loop after adjustment
+
+                # Check the unconnected height and issue a warning if necessary
+                check_unconnected_height(wall)
 
         t.Commit()
 
     return adjusted_walls
 
-
 def main():
+    # Prompt user to select between 'Architecture' or 'Interior' adjustments
+    adjustment_type = forms.SelectFromList.show(
+        ["Architecture", "Interior"],
+        title='Select Adjustment Type',
+        button_name='Select',
+        multiselect=False
+    )
+
+    if not adjustment_type:
+        forms.alert("No adjustment type selected.")
+        return
+
     # Prompt user to select a linked model
     linked_files = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     linked_file_names = [link.Name for link in linked_files]
@@ -284,18 +229,31 @@ def main():
     selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Walls to Align')
 
     if selected_wall_names:
-        adjusted_walls = align_walls(selected_wall_names, linked_doc)
+        adjusted_walls = align_walls(selected_wall_names, linked_doc, adjustment_type)
         
         # Call adjust_wall_top_offset for further adjustments based on slabs
         if adjusted_walls:
-            with Transaction(doc, "Adjust Wall Top Offset Based on Slabs") as t:
-                t.Start()
+            try:
+                # Start a transaction to adjust wall top offsets based on slabs
+                transaction = Transaction(doc, "Adjust Wall Top Offset Based on Slabs")
+                transaction.Start()
+
                 for wall in adjusted_walls:
                     slabs_above = get_floors_above(doc.GetElement(wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT).AsElementId()).Elevation, linked_doc)
                     adjust_wall_top_offset(wall, slabs_above)
-                t.Commit()
+
+                    # If 'Interior' is selected, reset the wall's top constraint to 'Unconnected'
+                    if adjustment_type == 'Interior':
+                        wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(ElementId.InvalidElementId)
+                    
+                # Commit the transaction
+                transaction.Commit()
+            except Exception as e:
+                print("Error in slab adjustment transaction: {}".format(e))
+                transaction.RollBack()
     else:
         forms.alert("No walls selected for alignment.")
 
 if __name__ == "__main__":
     main()
+
