@@ -1,14 +1,18 @@
 layout:
     - Initialization
-    - ----
+    - ---
     - Revision
-    - ----
+    - ---
     - Doors
-    - ----
+    - ---
     - Allign Elements
+    - ---
+    - Analysis
     - ---
     - Modelling Aids
     - ---
     - Model Validation
+    - ----
+    - Neom Parameters
     - ----
     - About
