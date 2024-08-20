@@ -84,7 +84,7 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
     """Adjust the wall top offset based on slabs above."""
     wall_bbox = wall.get_BoundingBox(None)
     if wall_bbox is None:
-        print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
+        #print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
         return
 
     wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
@@ -100,6 +100,11 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
             if wall_bbox.Min.Z < slab_bbox.Max.Z and wall_bbox.Max.Z > slab_bbox.Min.Z:
                 wall_top_offset_param = slab_thickness + abs(slab_height_offset)
                 param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+
+                if param.IsReadOnly:
+                    #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
+                    continue
+
                 current_offset = param.AsDouble()
                 new_offset = -wall_top_offset_param if current_offset == 0 else min(current_offset, -wall_top_offset_param)
                 param.Set(new_offset)
@@ -107,14 +112,14 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
                 #print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
                     #wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness))
 
-    if not adjusted:
+    #if not adjusted:
         #print("No adjustments made for wall '{}' (ID: {})".format(wall.Name, output.linkify(wall.Id)))
 
 def adjust_wall_to_ceiling(wall, ceilings, next_concrete_level):
     """Adjust the wall top to align with the ceiling."""
     wall_bbox = wall.get_BoundingBox(None)
     if wall_bbox is None:
-        print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
+        #print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
         return
 
     wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
@@ -130,14 +135,19 @@ def adjust_wall_to_ceiling(wall, ceilings, next_concrete_level):
             ceiling_top_elevation = ceiling_bbox.Max.Z
             new_offset = next_concrete_level.Elevation - ceiling_top_elevation
             param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+
+            if param.IsReadOnly:
+                #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
+                continue
+
             param.Set(-new_offset + 0.49212598)
             ceiling_found = True
             #print("Wall '{}' (ID: {}) adjusted to align with ceiling (ID: {}).".format(
-                #wall.Name, output.linkify(wall.Id), output.linkify(ceiling.Id)))
+               # wall.Name, output.linkify(wall.Id), output.linkify(ceiling.Id)))
             break
 
     if not ceiling_found:
-        #print("No ceiling found for wall '{}' (ID: {}). Using existing alignment logic.".format(
+       # print("No ceiling found for wall '{}' (ID: {}). Using existing alignment logic.".format(
             #wall.Name, output.linkify(wall.Id)))
         # No ceiling found, use existing alignment logic
         slabs_above = get_floors_above(wall_bbox.Min.Z, doc)
@@ -205,7 +215,12 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                         adjust_wall_top_offset(wall, slabs_above)
                         # Get the thickness of the slab closest to the wall
                         slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
-                        param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)   
+                        param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+
+                        if param.IsReadOnly:
+                            #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
+                            continue
+                            
                         param.Set(-slab_thickness)
                         adjusted_walls.append(wall)   # Add to the list of adjusted walls
 
@@ -220,6 +235,10 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                         if not slab_thickness or abs(current_offset + slab_thickness) < 1e-3:
                             # Adjust wall to beam bottom
                             param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+                            if param.IsReadOnly:
+                                #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
+                                continue
+                            
                             param.Set(-new_top_offset)
                             adjusted_walls.append(wall)  # Add to the list of adjusted walls
                             break   # Exit loop after adjustment
