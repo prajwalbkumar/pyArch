@@ -140,7 +140,7 @@ def adjust_wall_to_ceiling(wall, ceilings, next_concrete_level):
                 #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
                 continue
 
-            param.Set(-new_offset + 0.49212598)
+            param.Set(-new_offset + 0.32808399)
             ceiling_found = True
             #print("Wall '{}' (ID: {}) adjusted to align with ceiling (ID: {}).".format(
                # wall.Name, output.linkify(wall.Id), output.linkify(ceiling.Id)))
@@ -169,7 +169,7 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
     concrete_levels = filter_concrete_levels(levels)
     sorted_concrete_levels = sorted(concrete_levels, key=lambda lvl: lvl.Elevation)
     beams = get_beams(linked_doc)  # Retrieve beam data
-
+    walls_updated = 0    
     adjusted_walls = []
 
     with Transaction(doc, "Align Wall Top Constraint and Set Offset") as t:
@@ -216,7 +216,7 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                         # Get the thickness of the slab closest to the wall
                         slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
                         param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
-
+                        walls_updated += 1
                         if param.IsReadOnly:
                             #print("The WALL_TOP_OFFSET parameter is read-only for wall '{}'. Skipping adjustment.".format(wall.Name))
                             continue
@@ -240,7 +240,8 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                                 continue
                             
                             param.Set(-new_top_offset)
-                            adjusted_walls.append(wall)  # Add to the list of adjusted walls
+                            adjusted_walls.append(wall) 
+                            walls_updated += 1 # Add to the list of adjusted walls
                             break   # Exit loop after adjustment
 
                 if not next_concrete_level:
@@ -250,11 +251,14 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                     ceilings = get_ceilings()
                     if ceilings:
                         adjust_wall_to_ceiling(wall, ceilings, next_concrete_level)
+                        walls_updated += 1
                         adjusted_walls.append(wall)
 
                 # Check the unconnected height and issue a warning if necessary
                 check_unconnected_height(wall)
         t.Commit()
+        print("Number of walls successfully updated: {}".format(walls_updated))
+
     return adjusted_walls
 
 def main():
