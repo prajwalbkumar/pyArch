@@ -153,21 +153,28 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                     elif movement_direction == 'FFL to CL':
                         if "FFL" in wall_level_name:
                             if wall_level_id in level_pairs.values():
+                                target_cl_id = None
                                 for cl_id, ffl_id in level_pairs.items():
                                     if ffl_id == wall_level_id:
-                                        level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
-                                        if level_param:
-                                            level_param.Set(target_ffl_id)
-                                    
-                                            if unc_height_param.StorageType == StorageType.Double:
-                                                top_constraint_param = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
-                                                if top_constraint_param and top_constraint_param.AsValueString() == "Unconnected":
-                                                    unc_height = unc_height_param.AsDouble()
-                                                    new_unc_height = unc_height - (target_ffl.Elevation - wall_level.Elevation)
-                                                    unc_height_param.Set(new_unc_height)
-                                        else:
-                                            walls_not_moved.append((wall_name, wall.Id))
+                                        target_cl_id = cl_id
                                         break
+                                
+                                if target_cl_id:
+                                    target_cl = doc.GetElement(target_cl_id)  # Retrieve Level object
+                                    level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
+                                    if level_param:
+                                        level_param.Set(target_cl_id)
+                                    
+                                        if unc_height_param.StorageType == StorageType.Double:
+                                            top_constraint_param = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
+                                            if top_constraint_param and top_constraint_param.AsValueString() == "Unconnected":
+                                                unc_height = unc_height_param.AsDouble()
+                                                new_unc_height = unc_height - (target_cl.Elevation - wall_level.Elevation)
+                                                unc_height_param.Set(new_unc_height)
+                                    else:
+                                        walls_not_moved.append((wall_name, wall.Id))
+                                else:
+                                    walls_not_moved.append((wall_name, wall.Id))
                 else:
                     walls_not_moved.append((wall_name, wall.Id))
             txn.Commit()
@@ -179,11 +186,6 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         print("The following walls were not moved:")
         for wall_name, wall_id in walls_not_moved:
             print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
-
-
-def move_walls_to_ffl(selected_wall_names):
-    """Move walls from CL to FFL only."""
-    move_walls_based_on_direction('CL to FFL', selected_wall_names)
 
 def check_wall_heights():
     """Check walls with unconnected height greater than 10,000 mm and print warnings."""
