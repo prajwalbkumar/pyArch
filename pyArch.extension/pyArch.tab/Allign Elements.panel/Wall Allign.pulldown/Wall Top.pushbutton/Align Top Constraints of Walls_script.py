@@ -107,7 +107,7 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
                 #print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
                     #wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness))
 
-    if not adjusted:
+    #if not adjusted:
         #print("No adjustments made for wall '{}' (ID: {})".format(wall.Name, output.linkify(wall.Id)))
 
 def adjust_wall_to_ceiling(wall, ceilings, next_concrete_level):
