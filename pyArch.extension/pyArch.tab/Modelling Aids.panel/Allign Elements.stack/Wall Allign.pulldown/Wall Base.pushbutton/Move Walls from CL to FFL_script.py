@@ -97,6 +97,55 @@ def update_base_offset(walls):
             t.RollBack()
             forms.alert('Error during base offset update: {}'.format(e))
 
+def set_base_offset_for_wf_walls(walls, movement_direction):
+    walls_not_moved = []
+    walls_updated = 0  # Counter for updated walls
+
+    for wall in walls:
+        wall_name = wall.Name
+        wall_type = doc.GetElement(wall.WallType.Id)
+        base_offset_param = wall.LookupParameter("Base Offset")
+        unc_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
+
+        if "WF" in wall_name:
+            if movement_direction == 'CL to FFL':
+                if base_offset_param:
+                    # Check if the parameter is read-only
+                    if base_offset_param.IsReadOnly:
+                        #print("Wall Name: {} (ID: {}) base offset parameter is read-only and cannot be set.".format(wall.Name, output.linkify(wall.Id)))
+                        walls_not_moved.append((wall.Name, wall.Id))
+                    else:
+                        try:
+                            base_offset_value = base_offset_param.AsDouble()
+                            base_offset_mm = base_offset_value * 304.8  # Convert feet to millimeters
+
+                            if -100 <= base_offset_mm <= 100:
+                                #print("Wall Name: {} (ID: {}) base offset is within range: {} mm".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
+                                base_offset_param.Set(0.32808399)  # Set to 100mm, assuming input in feet
+                                walls_updated += 1  # Increment updated wall counter
+                                new_base_offset_value = base_offset_param.AsDouble()
+                                new_base_offset = new_base_offset_value 
+                                if unc_height_param.StorageType == StorageType.Double:
+                                    top_constraint_param = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
+                                    if top_constraint_param and top_constraint_param.AsValueString() == "Unconnected":
+                                        unc_height = unc_height_param.AsDouble()
+                                        new_unc_height = unc_height - (new_base_offset)
+                                        unc_height_param.Set(new_unc_height)
+                                
+                            else:
+                                print("Wall Name: {} (ID: {}) base offset out of range: {} mm".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
+                                walls_not_moved.append((wall.Name, wall.Id))
+                        except Exception as e:
+                            forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
+                            walls_not_moved.append((wall.Name, wall.Id))
+                else:
+                    forms.alert("Error: Base offset parameter is None for wall Name {}".format(wall.Name))
+                    walls_not_moved.append((wall.Name, wall.Id))
+        else:
+            walls_not_moved.append((wall.Name, wall.Id))
+
+    return walls_updated, walls_not_moved
+
 def move_walls_based_on_direction(movement_direction, selected_wall_names):
     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
     walls = extract_walls_from_groups(walls)  # Extract walls from groups
@@ -110,16 +159,18 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         return
 
     walls = [wall for wall in walls if wall.Name in selected_wall_names]
-    
     cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
     level_pairs = create_level_pairs(cl_levels, ffl_levels)
 
     update_base_offset(walls)
     walls_not_moved = []
+    walls_updated = 0  # Counter for updated walls
 
     with Transaction(doc, 'Move Walls Based on Direction') as txn:
         try:
             txn.Start()
+            
+            # Move walls based on direction and adjust base offset for WF walls
             for wall in walls:
                 wall_level_id = wall.LevelId
                 wall_name = wall.Name
@@ -132,7 +183,6 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                     
                 if wall_level:
                     wall_level_name = wall_level.Name if wall_level.Name else "Unknown Level"
-                    
                     if movement_direction == 'CL to FFL':
                         if "CL" in wall_level_name:
                             if wall_level_id in level_pairs:
@@ -141,7 +191,8 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                                 level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
                                 if level_param:
                                     level_param.Set(target_ffl_id)
-                                    
+                                    walls_updated += 1  # Increment updated wall counter
+                                
                                     if unc_height_param.StorageType == StorageType.Double:
                                         top_constraint_param = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
                                         if top_constraint_param and top_constraint_param.AsValueString() == "Unconnected":
@@ -164,6 +215,7 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                                     level_param = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT)
                                     if level_param:
                                         level_param.Set(target_cl_id)
+                                        walls_updated += 1  # Increment updated wall counter
                                     
                                         if unc_height_param.StorageType == StorageType.Double:
                                             top_constraint_param = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
@@ -175,8 +227,12 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                                         walls_not_moved.append((wall_name, wall.Id))
                                 else:
                                     walls_not_moved.append((wall_name, wall.Id))
-                else:
-                    walls_not_moved.append((wall_name, wall.Id))
+
+            # Adjust base offset for walls with 'WF' in their name
+            wf_walls_updated, wf_walls_not_moved = set_base_offset_for_wf_walls(walls, movement_direction)
+            walls_updated += wf_walls_updated
+            walls_not_moved.extend(wf_walls_not_moved)
+            
             txn.Commit()
         except Exception as e:
             txn.RollBack()
@@ -186,6 +242,9 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         print("The following walls were not moved:")
         for wall_name, wall_id in walls_not_moved:
             print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
+    
+    # Print the number of walls that were successfully updated
+    print("Number of walls successfully updated: {}".format(walls_updated))
 
 def check_wall_heights():
     """Check walls with unconnected height greater than 10,000 mm and print warnings."""
@@ -202,15 +261,18 @@ def check_wall_heights():
             unconnected_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
             if unconnected_height_param:
                 height_mm = unconnected_height_param.AsDouble() * 304.8  # Convert feet to millimeters
+                
                 if height_mm > 10000:
                     high_walls.append((wall.Name, wall.Id, height_mm))
         except Exception as e:
-            forms.alert("Error checking height for wall {}: {}".format (wall.Name,e ))
+            print('Error checking height for wall ID {}: {}'.format(wall.Id, e))
     
     if high_walls:
-        print("Warning: The following walls have an unconnected height greater than 10,000 mm:")
+        forms.alert('The following walls have an unconnected height greater than 10,000 mm:')
         for wall_name, wall_id, height_mm in high_walls:
-            print("Wall Name {} (ID: {}) has an unconnected height of {:.2f} mm.".format(wall_name, output.linkify(wall_id), height_mm ))
+            print("Wall Name: {} (ID: {}) - Height: {} mm".format(wall_name, output.linkify(wall_id), height_mm))
+    else:
+        print("No walls found with unconnected height greater than 10,000 mm.")
 
 def main():
     wall_names = get_wall_names()
