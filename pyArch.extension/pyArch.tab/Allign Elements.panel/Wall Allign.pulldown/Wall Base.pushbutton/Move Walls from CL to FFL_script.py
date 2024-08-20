@@ -194,58 +194,32 @@ def check_wall_heights():
             print("Wall Name {} (ID: {}) has an unconnected height of {:.2f} mm.".format(wall_name, output.linkify(wall_id), height_mm ))
 
 def main():
-    adjustment_branch = forms.SelectFromList.show(
-        ['Architecture', 'Interior'],
-        multiselect=False,
-        title='Choose the branch for adjustments'
-    )
+    wall_names = get_wall_names()
     
-    if not adjustment_branch:
-        forms.alert('No branch selected. Exiting script.')
+    if not wall_names:
+        forms.alert('No wall names found in the project.')
         return
     
-    if adjustment_branch == 'Architecture':
-        wall_names = get_wall_names()
-        
-        if not wall_names:
-            forms.alert('No wall names found in the project.')
-            return
-        
-        movement_direction = forms.SelectFromList.show(
-            ['Move Walls from CL to FFL', 'Move Walls from FFL to CL'],
-            multiselect=False,
-            title='Choose the direction to move walls'
-        )
-        
-        if not movement_direction:
-            forms.alert('No direction selected. Exiting script.')
-            return
-        
-        movement_direction = 'CL to FFL' if 'CL to FFL' in movement_direction else 'FFL to CL'
-        
-        selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
-        
-        if not selected_wall_names:
-            forms.alert('No wall names selected. Exiting script.')
-            return
-        
-        move_walls_based_on_direction(movement_direction, selected_wall_names)
-        
-    elif adjustment_branch == 'Interior':
-        wall_names = get_wall_names()
-        
-        if not wall_names:
-            forms.alert('No wall names found in the project.')
-            return
-        
-        selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
-        
-        if not selected_wall_names:
-            forms.alert('No wall names selected. Exiting script.')
-            return
-        
-        move_walls_to_ffl(selected_wall_names)
-
+    movement_direction = forms.SelectFromList.show(
+        ['Move Walls from CL to FFL', 'Move Walls from FFL to CL'],
+        multiselect=False,
+        title='Choose the direction to move walls'
+    )
+    
+    if not movement_direction:
+        forms.alert('No direction selected. Exiting script.')
+        return
+    
+    movement_direction = 'CL to FFL' if 'CL to FFL' in movement_direction else 'FFL to CL'
+    
+    selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
+    
+    if not selected_wall_names:
+        forms.alert('No wall names selected. Exiting script.')
+        return
+    
+    move_walls_based_on_direction(movement_direction, selected_wall_names)
+    
     # Check for walls with unconnected height greater than 10,000 mm
     check_wall_heights()
     
