@@ -100,22 +100,16 @@ if not counter == door_count:
     else:
         script.exit()
 
-try:
-    if not success == "Continue with Final Checks":
-        script.exit()
-except:
-    pass
-
 # Check if the Door Fire Rating == 3/4 of Wall Fire Rating
 failed_counter = 0
 failed_doors = []
 report_message = []
 for door in door_collector:
+    
     if not door.LookupParameter("Fire_Rating").AsString() == "0":
         wall = door.Host
         wall_fire_param = wall.LookupParameter("Fire_Rating").AsString() 
         door_fire_param = door.LookupParameter("Fire_Rating").AsString()
-
         # Check if the door_fire_param last digit is not a character. if yes, then strip off the last character
         if not door_fire_param[-1].isdigit():
             door_fire_param = door_fire_param[:-1]
@@ -124,8 +118,10 @@ for door in door_collector:
             failed_doors.append(door)
             failed_counter += 1
 
-if failed_counter:
 
+if not failed_counter:
+    forms.alert("All Parameters are Correct!", title = "Script Exited", warn_icon = False)
+else:
     report = forms.alert("Door Fire Parameter should be 3/4th of the Wall Rating", title="Door Fire Rating Missing", warn_icon=True, 
                          options=["Show Report","Auto Correct Values [BETA]"])  
     if report == "Show Report":
@@ -142,9 +138,3 @@ if failed_counter:
         t.Commit()
         success_message = "Fire Rating of " + str(len(failed_doors)) + " doors have been filled"
         success = forms.alert(success_message, title="Missing Parameters Filled", warn_icon=False, options=["OK"])
-    else:
-        script.exit()
-
-else:
-    forms.alert("All Parameters are Correct!", title = "Script Exited", warn_icon = False)
-    script.exit()     

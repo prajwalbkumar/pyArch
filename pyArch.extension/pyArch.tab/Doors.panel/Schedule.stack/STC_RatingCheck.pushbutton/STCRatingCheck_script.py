@@ -100,12 +100,6 @@ if not counter == door_count:
     else:
         script.exit()
 
-try:
-    if not success == "Continue with Final Checks":
-        script.exit()
-except:
-    pass
-
 # Check if the Door STC Rating == -20Db of Wall STC Rating
 failed_counter = 0
 failed_doors = []
@@ -133,7 +127,6 @@ if failed_counter:
             print (line)
         script.exit()
     elif report =="Auto Correct Values [BETA]":
-        print("XXXXXX")
         t = Transaction(doc, "Filling Door STC Ratings")
         t.Start()
         for door in failed_doors:
@@ -143,9 +136,6 @@ if failed_counter:
         t.Commit()
         success_message = "STC Rating of " + str(len(failed_doors)) + " doors have been filled"
         success = forms.alert(success_message, title="Missing Parameters Filled", warn_icon=False, options=["OK"])
-    else:
-        script.exit()
 
 else:
-    forms.alert("All Parameters are Correct!", title = "Script Exited", warn_icon = False)
-    script.exit()     
+    forms.alert("All Parameters are Correct!", title = "Script Exited", warn_icon = False) 
