@@ -67,6 +67,11 @@ def get_beams(linked_doc):
 
     return beam_data
 
+def get_ceilings():
+    """Retrieve all ceiling elements in the model."""
+    ceilings = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ceilings).WhereElementIsNotElementType().ToElements()
+    return ceilings
+
 def filter_concrete_levels(levels):
     """Filter levels to find those named with 'CL'."""
     return [level for level in levels if "CL" in level.LookupParameter("Name").AsString()]
@@ -76,13 +81,13 @@ def find_next_concrete_level(base_level, concrete_levels):
     return next((cl for cl in concrete_levels if cl.Elevation > base_level.Elevation), None)
 
 def adjust_wall_top_offset(wall, filtered_slabs_above):
+    """Adjust the wall top offset based on slabs above."""
     wall_bbox = wall.get_BoundingBox(None)
-    #if wall_bbox is None:
-        #print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
-        #return
+    if wall_bbox is None:
+        print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
+        return
 
     wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
-
     adjusted = False  # Track if any adjustments were made
 
     for slab in filtered_slabs_above:
@@ -92,17 +97,51 @@ def adjust_wall_top_offset(wall, filtered_slabs_above):
 
         slab_outline = Outline(slab_bbox.Min, slab_bbox.Max)
         if wall_outline.Intersects(slab_outline, 1e-3):
-    # Only consider as intersecting if there's an overlap in all dimensions (X, Y, and Z)
-           if (wall_bbox.Min.Z < slab_bbox.Max.Z and wall_bbox.Max.Z > slab_bbox.Min.Z):
-               wall_top_offset_param = slab_thickness + abs(slab_height_offset)
-               current_offset = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).AsDouble()
-               new_offset = -wall_top_offset_param if current_offset == 0 else min(current_offset, -wall_top_offset_param)
-               wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(new_offset)
-               #print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
+            if wall_bbox.Min.Z < slab_bbox.Max.Z and wall_bbox.Max.Z > slab_bbox.Min.Z:
+                wall_top_offset_param = slab_thickness + abs(slab_height_offset)
+                param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+                current_offset = param.AsDouble()
+                new_offset = -wall_top_offset_param if current_offset == 0 else min(current_offset, -wall_top_offset_param)
+                param.Set(new_offset)
+                adjusted = True
+                #print("Wall '{}' (ID: {}) adjusted to align with the intersecting slab (ID: {}) (thickness: {}).".format(
                     #wall.Name, output.linkify(wall.Id), output.linkify(slab_id), slab_thickness))
 
-    #if not adjusted:
+    if not adjusted:
         #print("No adjustments made for wall '{}' (ID: {})".format(wall.Name, output.linkify(wall.Id)))
+
+def adjust_wall_to_ceiling(wall, ceilings, next_concrete_level):
+    """Adjust the wall top to align with the ceiling."""
+    wall_bbox = wall.get_BoundingBox(None)
+    if wall_bbox is None:
+        print("Warning: Wall '{}' (ID: {}) has no bounding box.".format(wall.Name, output.linkify(wall.Id)))
+        return
+
+    wall_outline = Outline(wall_bbox.Min, wall_bbox.Max)
+    ceiling_found = False
+
+    for ceiling in ceilings:
+        ceiling_bbox = ceiling.get_BoundingBox(None)
+        if ceiling_bbox is None:
+            continue
+
+        ceiling_outline = Outline(ceiling_bbox.Min, ceiling_bbox.Max)
+        if wall_outline.Intersects(ceiling_outline, 1e-3):
+            ceiling_top_elevation = ceiling_bbox.Max.Z
+            new_offset = next_concrete_level.Elevation - ceiling_top_elevation
+            param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+            param.Set(-new_offset + 0.49212598)
+            ceiling_found = True
+            #print("Wall '{}' (ID: {}) adjusted to align with ceiling (ID: {}).".format(
+                #wall.Name, output.linkify(wall.Id), output.linkify(ceiling.Id)))
+            break
+
+    if not ceiling_found:
+        #print("No ceiling found for wall '{}' (ID: {}). Using existing alignment logic.".format(
+            #wall.Name, output.linkify(wall.Id)))
+        # No ceiling found, use existing alignment logic
+        slabs_above = get_floors_above(wall_bbox.Min.Z, doc)
+        adjust_wall_top_offset(wall, slabs_above)
 
 def check_unconnected_height(wall):
     """Check the unconnected height of a wall and generate a warning if greater than 10,000 mm."""
@@ -115,6 +154,7 @@ def check_unconnected_height(wall):
                 wall.Name, output.linkify(wall.Id)))
 
 def align_walls(selected_wall_names, linked_doc, adjustment_type):
+    """Align walls to the slab or ceiling based on the selected adjustment type."""
     levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
     concrete_levels = filter_concrete_levels(levels)
     sorted_concrete_levels = sorted(concrete_levels, key=lambda lvl: lvl.Elevation)
@@ -152,13 +192,8 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                 else:
                     forms.alert("Error: Unconnected height parameter is None for wall Name {}".format(wall.Name))
                     continue
-                
-                if base_level is None:
-                    print("Base level not found for wall ID: {}".format(wall.Id.IntegerValue))
-                    continue
 
                 next_concrete_level = find_next_concrete_level(base_level, sorted_concrete_levels)
-
                 if next_concrete_level:
                     wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE).Set(next_concrete_level.Id)
                     # Get the slabs above the base level
@@ -170,7 +205,8 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                         adjust_wall_top_offset(wall, slabs_above)
                         # Get the thickness of the slab closest to the wall
                         slab_thickness = min(slabs_above, key=lambda x: x[0] - base_level.Elevation)[1]
-                        wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-slab_thickness)
+                        param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)   
+                        param.Set(-slab_thickness)
                         adjusted_walls.append(wall)   # Add to the list of adjusted walls
 
                 # Adjust wall top based on beams
@@ -183,15 +219,23 @@ def align_walls(selected_wall_names, linked_doc, adjustment_type):
                         
                         if not slab_thickness or abs(current_offset + slab_thickness) < 1e-3:
                             # Adjust wall to beam bottom
-                            wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET).Set(-new_top_offset)
+                            param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+                            param.Set(-new_top_offset)
                             adjusted_walls.append(wall)  # Add to the list of adjusted walls
                             break   # Exit loop after adjustment
 
+                if not next_concrete_level:
+                    continue
+
+                if adjustment_type == "Interior":
+                    ceilings = get_ceilings()
+                    if ceilings:
+                        adjust_wall_to_ceiling(wall, ceilings, next_concrete_level)
+                        adjusted_walls.append(wall)
+
                 # Check the unconnected height and issue a warning if necessary
                 check_unconnected_height(wall)
-
         t.Commit()
-
     return adjusted_walls
 
 def main():
