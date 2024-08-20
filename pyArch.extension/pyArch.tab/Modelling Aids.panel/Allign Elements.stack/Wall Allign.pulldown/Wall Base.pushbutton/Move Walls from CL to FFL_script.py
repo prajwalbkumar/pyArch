@@ -79,7 +79,7 @@ def update_base_offset(walls):
                         base_offset_value = base_offset_param.AsDouble()
                         base_offset_mm = base_offset_value * 304.8  # Convert feet to millimeters
                         
-                        if -100 <= base_offset_mm <= 100:
+                        if -101 <= base_offset_mm <= 101:
                             if base_offset_mm > 0:
                                 print("Wall Name: {} (ID: {}) base offset set to 0 from {} mm and wall moved to CL/FFL as per user selection.".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
                             base_offset_param.Set(0)  # Set to 0, assuming input in feet
@@ -161,7 +161,10 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
     walls = [wall for wall in walls if wall.Name in selected_wall_names]
     cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
     level_pairs = create_level_pairs(cl_levels, ffl_levels)
-
+    level_pairs = create_level_pairs(cl_levels, ffl_levels)
+    if not level_pairs:
+        forms.alert('No level pairs found')
+        return
     update_base_offset(walls)
     walls_not_moved = []
     walls_updated = 0  # Counter for updated walls
