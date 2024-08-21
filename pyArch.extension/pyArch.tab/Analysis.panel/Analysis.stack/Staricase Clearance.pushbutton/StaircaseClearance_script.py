@@ -25,6 +25,13 @@ def get_inflated_bbox(element, clearance):
     # print("New Maximum: {}" .format(bbox.Max))
     return bbox
 
+def get_faces(solid):
+    faces = []
+    all_faces = solid.Faces
+    for face in all_faces:
+        faces.append(face)
+    return faces
+    
 
 # Relevant Codes
 code = ["NFPA", "FRENCH", "IBC", "BS-EN", "SBC", "NBC", "DCD"]
@@ -91,14 +98,14 @@ for stair in stairs_collector:
     outline = Outline(bbox.Min, bbox.Max)
 
     intersect_filter = BoundingBoxIntersectsFilter(outline)
-    target_floor_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_Floors).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElementIds()) 
-    target_framing_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_StructuralFraming).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElementIds()) 
+    target_floor_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_Floors).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
+    target_framing_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_StructuralFraming).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
     
-    for element_id in target_floor_collection:
-        target_link_element_id.append(element_id)
+    for element in target_floor_collection:
+        target_link_element_id.append(element.Id)
 
-    for element_id in target_framing_collection:
-        target_link_element_id.append(element_id)
+    for element in target_framing_collection:
+        target_link_element_id.append(element.Id)
 
 # Get all model elements in the active document
 wall_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElementIds()
@@ -108,34 +115,99 @@ ramp_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_
 roof_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Roofs).WhereElementIsNotElementType().ToElementIds()
 
 target_host_element_id = []
-for element in wall_element_ids:
+for element_id in wall_element_ids:
     target_host_element_id.append(element_id)
 
-for element in floor_element_ids:
+for element_id in floor_element_ids:
     target_host_element_id.append(element_id)
 
-for element in ceiling_element_ids:
+for element_id in ceiling_element_ids:
     target_host_element_id.append(element_id)
 
-for element in ramp_element_ids:
+for element_id in ramp_element_ids:
     target_host_element_id.append(element_id)
 
-for element in roof_element_ids:
+for element_id in roof_element_ids:
     target_host_element_id.append(element_id)
 
-for element in stairs_collector:
-    target_host_element_id.append(element.Id)
+for element_id in stairs_collector:
+    target_host_element_id.append(element_id)
+
+options = Options()
+options.View = doc.ActiveView
+options.IncludeNonVisibleObjects = True
 
 for stair in stairs_collector:
+    upper_faces = []
+    print("\n\n")
     # Isolate Stair - Landing & Run Geometries
     stair_run_ids = stair.GetStairsRuns()
-    stair_geom = []
+    stair_geometry = []
     for run_id in stair_run_ids:
         run = doc.GetElement(run_id)
-        stair_geom.append(run.get_Geometry(Options()))
+        stair_geometry.append(run.get_Geometry(options))
+
+        if (stair.LookupParameter("Family").AsValueString() == "Assembled Stair"):
+            for components in stair_geometry:
+                for geometry in components:
+                    if (geometry.ToString() == "Autodesk.Revit.DB.GeometryInstance"):
+                        geometry_instance = geometry.GetInstanceGeometry()
+                        for solid in geometry_instance:
+                            print(solid.Volume)
+                            faces = get_faces(solid)
+                            if faces:
+                                for face in faces:
+                                    vector_z = int(face.FaceNormal.Z)
+                                    if vector_z == 1:
+                                        upper_faces.append(face)
+
+        else:
+            for component in stair_geometry:
+                for geometry in component:
+                    if (geometry.ToString() == "Autodesk.Revit.DB.Solid"):
+                        # print(geometry.Volume) ## This is a solid as well
+                        faces = get_faces(geometry)
+                        if faces:
+                                for face in faces:
+                                    vector_z = int(face.FaceNormal.Z)
+                                    if vector_z == 1:
+                                        upper_faces.append(face)
 
     stair_ladning_ids = stair.GetStairsLandings()
     for landing_id in stair_ladning_ids:
         landing = doc.GetElement(landing_id)
-        stair_geom.append(landing.get_Geometry(Options()))
+        stair_geometry.append(landing.get_Geometry(options))
+
+    # Get All Upper Faces
+
     
+    if (stair.LookupParameter("Family").AsValueString() == "Assembled Stair"):
+        for components in stair_geometry:
+            for geometry in components:
+                if (geometry.ToString() == "Autodesk.Revit.DB.GeometryInstance"):
+                    geometry_instance = geometry.GetInstanceGeometry()
+                    for solid in geometry_instance:
+                        print(solid.Volume)
+                        faces = get_faces(solid)
+                        if faces:
+                            for face in faces:
+                                vector_z = int(face.FaceNormal.Z)
+                                if vector_z == 1:
+                                    upper_faces.append(face)
+
+    else:
+        for component in stair_geometry:
+            for geometry in component:
+                if (geometry.ToString() == "Autodesk.Revit.DB.Solid"):
+                    # print(geometry.Volume) ## This is a solid as well
+                    faces = get_faces(geometry)
+                    if faces:
+                            for face in faces:
+                                vector_z = int(face.FaceNormal.Z)
+                                if vector_z == 1:
+                                    upper_faces.append(face)
+    
+
+    print(len(upper_faces))
+    script.exit()
+            
