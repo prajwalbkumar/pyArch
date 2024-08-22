@@ -31,6 +31,35 @@ def get_faces(solid):
     for face in all_faces:
         faces.append(face)
     return faces
+
+def get_upper_faces(stair, stair_geometry):
+    upper_faces = []
+    if (stair.LookupParameter("Family").AsValueString() == "Assembled Stair"):
+        for components in stair_geometry:
+            for geometry in components:
+                if (geometry.ToString() == "Autodesk.Revit.DB.GeometryInstance"):
+                    geometry_instance = geometry.GetInstanceGeometry()
+                    for solid in geometry_instance:
+                        faces = get_faces(solid)
+                        if faces:
+                            for face in faces:
+                                vector_z = int(face.FaceNormal.Z)
+                                if vector_z == 1:
+                                    upper_faces.append(face)
+        return upper_faces
+
+    else:
+        for component in stair_geometry:
+            for geometry in component:
+                if (geometry.ToString() == "Autodesk.Revit.DB.Solid"):
+                    # print(geometry.Volume) ## This is a solid as well
+                    faces = get_faces(geometry)
+                    if faces:
+                            for face in faces:
+                                vector_z = int(face.FaceNormal.Z)
+                                if vector_z == 1:
+                                    upper_faces.append(face)
+        return upper_faces
     
 
 # Relevant Codes
@@ -138,76 +167,56 @@ options.View = doc.ActiveView
 options.IncludeNonVisibleObjects = True
 
 for stair in stairs_collector:
-    upper_faces = []
-    print("\n\n")
+
+    # Calculate Run Faces
+    all_upper_faces = []
+
     # Isolate Stair - Landing & Run Geometries
     stair_run_ids = stair.GetStairsRuns()
     stair_geometry = []
+
+    # Calculate Upper Faces for Run
+    treads = 0
     for run_id in stair_run_ids:
         run = doc.GetElement(run_id)
         stair_geometry.append(run.get_Geometry(options))
+        treads += run.LookupParameter("Actual Number of Treads").AsInteger()
 
-        if (stair.LookupParameter("Family").AsValueString() == "Assembled Stair"):
-            for components in stair_geometry:
-                for geometry in components:
-                    if (geometry.ToString() == "Autodesk.Revit.DB.GeometryInstance"):
-                        geometry_instance = geometry.GetInstanceGeometry()
-                        for solid in geometry_instance:
-                            print(solid.Volume)
-                            faces = get_faces(solid)
-                            if faces:
-                                for face in faces:
-                                    vector_z = int(face.FaceNormal.Z)
-                                    if vector_z == 1:
-                                        upper_faces.append(face)
+        run_upper_faces = get_upper_faces(stair, stair_geometry)
+        face_areas = []
+        for face in run_upper_faces:
+            face_areas.append(face.Area)
 
-        else:
-            for component in stair_geometry:
-                for geometry in component:
-                    if (geometry.ToString() == "Autodesk.Revit.DB.Solid"):
-                        # print(geometry.Volume) ## This is a solid as well
-                        faces = get_faces(geometry)
-                        if faces:
-                                for face in faces:
-                                    vector_z = int(face.FaceNormal.Z)
-                                    if vector_z == 1:
-                                        upper_faces.append(face)
+        # Create a list of (index, area) pairs
+        indexed_areas = []
+        for index, area in enumerate(face_areas):
+            indexed_areas.append((index, area))
+
+        # Sort the list based on the area values
+        sorted_indexed_areas = sorted(indexed_areas, key=lambda x: x[1])
+
+        # Extract the sorted indices
+        sorted_indices = []
+        for item in sorted_indexed_areas:
+            sorted_indices.append(item[0])
+
+        # The sorted_indices list now contains the indices in the order of the sorted areas
+        sorted_faces = []
+        for index in sorted_indices:
+            sorted_faces.append(run_upper_faces[index])
+
+        sorted_faces.reverse()
+        run_faces = []
+        for index in range(run.LookupParameter("Actual Number of Treads").AsInteger()):
+            run_faces.append(sorted_faces[index])        
+
 
     stair_ladning_ids = stair.GetStairsLandings()
     for landing_id in stair_ladning_ids:
         landing = doc.GetElement(landing_id)
         stair_geometry.append(landing.get_Geometry(options))
+        landing_faces = get_upper_faces(stair, stair_geometry)
 
-    # Get All Upper Faces
-
+    test_faces = run_faces + landing_faces  
     
-    if (stair.LookupParameter("Family").AsValueString() == "Assembled Stair"):
-        for components in stair_geometry:
-            for geometry in components:
-                if (geometry.ToString() == "Autodesk.Revit.DB.GeometryInstance"):
-                    geometry_instance = geometry.GetInstanceGeometry()
-                    for solid in geometry_instance:
-                        print(solid.Volume)
-                        faces = get_faces(solid)
-                        if faces:
-                            for face in faces:
-                                vector_z = int(face.FaceNormal.Z)
-                                if vector_z == 1:
-                                    upper_faces.append(face)
-
-    else:
-        for component in stair_geometry:
-            for geometry in component:
-                if (geometry.ToString() == "Autodesk.Revit.DB.Solid"):
-                    # print(geometry.Volume) ## This is a solid as well
-                    faces = get_faces(geometry)
-                    if faces:
-                            for face in faces:
-                                vector_z = int(face.FaceNormal.Z)
-                                if vector_z == 1:
-                                    upper_faces.append(face)
     
-
-    print(len(upper_faces))
-    script.exit()
-            
