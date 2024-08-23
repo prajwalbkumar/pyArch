@@ -62,35 +62,10 @@ def get_upper_faces(stair, stair_geometry):
                                 if vector_z == 1:
                                     upper_faces.append(face)
         return upper_faces
-    
-# Function to get an array of points on a face
-def sample_points_on_face(face, u_samples=10, v_samples=10):
-    points = []
-    
-    # Get the UV bounds of the face
-    u_min, u_max = face.GetBoundingBox().Min.U, face.GetBoundingBox().Max.U
-    v_min, v_max = face.GetBoundingBox().Min.V, face.GetBoundingBox().Max.V
-
-    # Loop through the U and V ranges
-    for i in range(u_samples):
-        for j in range(v_samples):
-            # Calculate the normalized U and V values
-            u = u_min + (u_max - u_min) * (i / (u_samples - 1))
-            v = v_min + (v_max - v_min) * (j / (v_samples - 1))
-
-            # Create a UV point
-            uv_point = UV(u, v)
-
-            # Evaluate the point on the face (returns an XYZ point)
-            xyz_point = face.Evaluate(uv_point)
-
-            # Store the point
-            points.append(xyz_point)
-
-    return points
 
 
 def get_face_centroid(face):
+    
     # Get the edges that define the face boundary
     edges = face.EdgeLoops
     points = []
@@ -109,6 +84,24 @@ def get_face_centroid(face):
         count = len(points)
         centroid = XYZ(sum_x / count, sum_y / count, sum_z / count)
         return centroid
+
+    return None
+
+
+def get_face_vertices(face):
+    
+    # Get the edges that define the face boundary
+    edges = face.EdgeLoops
+    points = []
+
+    # Extract all points from the edges
+    for edge_loop in edges:
+        for edge in edge_loop:
+            points.append(edge.AsCurve().GetEndPoint(0))
+
+    # Calculate the average of all points to find the centroid
+    if points:
+        return points
 
     return None
 
@@ -159,7 +152,7 @@ link_name = []
 for link in linked_instance:
     link_name.append(link.Name)
 
-st_instance_name = forms.SelectFromList.show(link_name, title = "Select URS File", width=600, height=600, button_name="Select File", multiselect=False)
+st_instance_name = forms.SelectFromList.show(link_name, title = "Select ST File", width=600, height=600, button_name="Select File", multiselect=False)
 
 if not st_instance_name:
     script.exit()
@@ -229,8 +222,9 @@ options.IncludeNonVisibleObjects = True
 t = Transaction(doc, "Test")
 t.Start()
 
-for stair in stairs_collector:
 
+for stair in stairs_collector:
+    stair_tread_count = 0
     # Calculate Run Faces
     all_upper_faces = []
 
@@ -241,38 +235,63 @@ for stair in stairs_collector:
     # Calculate Upper Faces for Run
     treads = 0
     run_faces = []
+    run_index_upper_faces = []
     for run_id in stair_run_ids:
         run = doc.GetElement(run_id)
+        stair_tread_count += run.LookupParameter("Actual Number of Treads").AsInteger()
         stair_geometry.append(run.get_Geometry(options))
-        treads += run.LookupParameter("Actual Number of Treads").AsInteger()
 
-        run_upper_faces = get_upper_faces(stair, stair_geometry)
-        face_areas = []
-        for face in run_upper_faces:
-            face_areas.append(face.Area)
+        run_index_upper_faces.append(get_upper_faces(stair, stair_geometry))
 
-        # Create a list of (index, area) pairs
-        indexed_areas = []
-        for index, area in enumerate(face_areas):
-            indexed_areas.append((index, area))
+    # Remove Duplicate Faces
+    all_faces = []
 
-        # Sort the list based on the area values
-        sorted_indexed_areas = sorted(indexed_areas, key=lambda x: x[1])
+    for run in run_index_upper_faces:
+        for face in run:
+            all_faces.append(face)
 
-        # Extract the sorted indices
-        sorted_indices = []
-        for item in sorted_indexed_areas:
-            sorted_indices.append(item[0])
+    all_centroids_z = []
+    for face in all_faces:
+        all_centroids_z.append(int(get_face_centroid(face).Z * 304.8))
+        
+    run_upper_faces = []
+    seen = set()  # This will contain only unique occurrences
 
-        # The sorted_indices list now contains the indices in the order of the sorted areas
-        sorted_faces = []
-        for index in sorted_indices:
-            sorted_faces.append(run_upper_faces[index])
+    for i, ele in enumerate(all_centroids_z):
+        if ele not in seen:  # This checks if the item is not already in the seen list
+            run_upper_faces.append(i)
+        seen.add(ele)  # Ensure the element is added after processing
+    
+    run_unique_upper_faces = []
+    for index in run_upper_faces:
+        run_unique_upper_faces.append(all_faces[index])
+        
 
-        sorted_faces.reverse()
-        for index in range(run.LookupParameter("Actual Number of Treads").AsInteger()):
-            run_faces.append(sorted_faces[index]) 
+    face_areas = []
+    for face in run_unique_upper_faces:
+        face_areas.append(face.Area)
 
+    # Create a list of (index, area) pairs
+    indexed_areas = []
+    for index, area in enumerate(face_areas):
+        indexed_areas.append((index, area))
+
+    # Sort the list based on the area values
+    sorted_indexed_areas = sorted(indexed_areas, key=lambda x: x[1])
+
+    # Extract the sorted indices
+    sorted_indices = []
+    for item in sorted_indexed_areas:
+        sorted_indices.append(item[0])
+
+    # The sorted_indices list now contains the indices in the order of the sorted areas
+    sorted_faces = []
+    for index in sorted_indices:
+        sorted_faces.append(run_unique_upper_faces[index])
+
+    sorted_faces.reverse()
+    for index in range(stair_tread_count):
+        run_faces.append(sorted_faces[index])
 
     # Extract Landing Faces
     stair_geometry = []
@@ -288,16 +307,62 @@ for stair in stairs_collector:
     if landing_faces:
         test_faces = run_faces + landing_faces
     else:
-        test_faces = run_faces
-        
+        test_faces = run_faces 
+
+            
     all_mid_points = []
-    for face in test_faces:
-        centroid = get_face_centroid(face)
-        if centroid is not None:
-            all_mid_points.append(centroid)
+    if run_faces:
+        for face in run_faces:
+
+            u_min = face.GetBoundingBox().Min.U
+            u_max = face.GetBoundingBox().Max.U
+            v_min = face.GetBoundingBox().Min.V
+            v_max = face.GetBoundingBox().Max.V
+
+            # Define grid resolution
+            u_divisions = 3
+            v_divisions = 5
+
+            # Calculate step size in UV space
+            u_step = (u_max - u_min) / u_divisions
+            v_step = (v_max - v_min) / v_divisions
 
 
+            for i in range(u_divisions + 1):
+                for j in range(v_divisions + 1):
+                    u = u_min + i * u_step
+                    v = v_min + j * v_step
+                    uv_point = UV(u, v)
+                    xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
+                    if face.IsInside(uv_point):
+                        all_mid_points.append(xyz_point)
 
+    if landing_faces:
+        for face in landing_faces:
+
+            u_min = face.GetBoundingBox().Min.U
+            u_max = face.GetBoundingBox().Max.U
+            v_min = face.GetBoundingBox().Min.V
+            v_max = face.GetBoundingBox().Max.V
+
+            # Define grid resolution
+            u_divisions = 10
+            v_divisions = 10
+
+            # Calculate step size in UV space
+            u_step = (u_max - u_min) / u_divisions
+            v_step = (v_max - v_min) / v_divisions
+
+
+            for i in range(u_divisions + 1):
+                for j in range(v_divisions + 1):
+                    u = u_min + i * u_step
+                    v = v_min + j * v_step
+                    uv_point = UV(u, v)
+                    xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
+                    if face.IsInside(uv_point):
+                        all_mid_points.append(xyz_point)
+    
     direction = XYZ(0,0,1)
     for point in all_mid_points:
         plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
@@ -305,17 +370,14 @@ for stair in stairs_collector:
         model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + 9.186352))), sketch_plane)
         
 
-        intersector = ReferenceIntersector(view)
-        intersector.FindReferencesInRevitLinks = True
+        # intersector = ReferenceIntersector(view)
+        # intersector.FindReferencesInRevitLinks = True
         
-        result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
-        if not result: 
-            continue
-
-        print(result.Proximity)
+        # result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
+        # if not result: 
+        #     continue
+        # proximity = (result.Proximity + 1 ) * 304.
+        # if proximity < clearance:
+        #     print(proximity)
 
 t.Commit()
-
-        
-print("Stair Done \n\n\n\n\n")
-    
