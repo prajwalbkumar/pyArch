@@ -14,7 +14,6 @@ script_dir = os.path.dirname(__file__)
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
-rvt_year = int(app.VersionNumber)
 output = script.get_output()
 
 
@@ -63,7 +62,6 @@ def get_upper_faces(stair, stair_geometry):
                                     upper_faces.append(face)
         return upper_faces
 
-
 def get_face_centroid(face):
     
     # Get the edges that define the face boundary
@@ -84,24 +82,6 @@ def get_face_centroid(face):
         count = len(points)
         centroid = XYZ(sum_x / count, sum_y / count, sum_z / count)
         return centroid
-
-    return None
-
-
-def get_face_vertices(face):
-    
-    # Get the edges that define the face boundary
-    edges = face.EdgeLoops
-    points = []
-
-    # Extract all points from the edges
-    for edge_loop in edges:
-        for edge in edge_loop:
-            points.append(edge.AsCurve().GetEndPoint(0))
-
-    # Calculate the average of all points to find the centroid
-    if points:
-        return points
 
     return None
 
@@ -145,75 +125,83 @@ elif user_code == code[6]:
 else:
     script.exit()
 
-# Collect all linked instances
-linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+# # Collect all linked instances
+# linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
 
-link_name = []
-for link in linked_instance:
-    link_name.append(link.Name)
+# link_name = []
+# for link in linked_instance:
+#     link_name.append(link.Name)
 
-st_instance_name = forms.SelectFromList.show(link_name, title = "Select ST File", width=600, height=600, button_name="Select File", multiselect=False)
+# st_instance_name = forms.SelectFromList.show(link_name, title = "Select ST File", width=600, height=600, button_name="Select File", multiselect=False)
 
-if not st_instance_name:
-    script.exit()
+# if not st_instance_name:
+#     script.exit()
 
-for link in linked_instance:
-    if st_instance_name == link.Name:
-        st_instance = link
-        break
+# for link in linked_instance:
+#     if st_instance_name == link.Name:
+#         st_instance = link
+#         break
 
-# Get the transformation matrix of the link
-transform = st_instance.GetTransform()
+# # Get the transformation matrix of the link
+# transform = st_instance.GetTransform()
+
+
+
+# # Get all target elements from the ST Link. 
+# st_doc = st_instance.GetLinkDocument()
+# target_link_element_id = []
+# for stair in stairs_collector:
+#     bbox = get_inflated_bbox(stair, clearance)
+
+#     bbox.Min = transform.Inverse.OfPoint(bbox.Min)
+#     bbox.Max = transform.Inverse.OfPoint(bbox.Max)
+
+#     outline = Outline(bbox.Min, bbox.Max)
+
+#     intersect_filter = BoundingBoxIntersectsFilter(outline)
+#     target_floor_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_Floors).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
+#     target_framing_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_StructuralFraming).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
+    
+#     for element in target_floor_collection:
+#         target_link_element_id.append(element.Id)
+
+#     for element in target_framing_collection:
+#         target_link_element_id.append(element.Id)
+
+# # Get all model elements in the active document
+# wall_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElementIds()
+# floor_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElementIds()
+# ceiling_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ceilings).WhereElementIsNotElementType().ToElementIds()
+# ramp_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ramps).WhereElementIsNotElementType().ToElementIds()
+# roof_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Roofs).WhereElementIsNotElementType().ToElementIds()
+
+# target_host_element_id = []
+# for element_id in wall_element_ids:
+#     target_host_element_id.append(element_id)
+
+# for element_id in floor_element_ids:
+#     target_host_element_id.append(element_id)
+
+# for element_id in ceiling_element_ids:
+#     target_host_element_id.append(element_id)
+
+# for element_id in ramp_element_ids:
+#     target_host_element_id.append(element_id)
+
+# for element_id in roof_element_ids:
+#     target_host_element_id.append(element_id)
+
+# for element_id in stairs_collector:
+#     target_host_element_id.append(element_id)
+
+
 
 # Get all the Stairs in the Document. And Inflate their bounding boxes a over the top.
 stairs_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Stairs).WhereElementIsNotElementType().ToElements()
-
-# Get all target elements from the ST Link. 
-st_doc = st_instance.GetLinkDocument()
-target_link_element_id = []
-for stair in stairs_collector:
-    bbox = get_inflated_bbox(stair, clearance)
-
-    bbox.Min = transform.Inverse.OfPoint(bbox.Min)
-    bbox.Max = transform.Inverse.OfPoint(bbox.Max)
-
-    outline = Outline(bbox.Min, bbox.Max)
-
-    intersect_filter = BoundingBoxIntersectsFilter(outline)
-    target_floor_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_Floors).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
-    target_framing_collection = (FilteredElementCollector(st_doc).OfCategory(BuiltInCategory.OST_StructuralFraming).WherePasses(intersect_filter).WhereElementIsNotElementType().ToElements()) 
-    
-    for element in target_floor_collection:
-        target_link_element_id.append(element.Id)
-
-    for element in target_framing_collection:
-        target_link_element_id.append(element.Id)
-
-# Get all model elements in the active document
-wall_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElementIds()
-floor_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Floors).WhereElementIsNotElementType().ToElementIds()
-ceiling_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ceilings).WhereElementIsNotElementType().ToElementIds()
-ramp_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Ramps).WhereElementIsNotElementType().ToElementIds()
-roof_element_ids = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Roofs).WhereElementIsNotElementType().ToElementIds()
-
-target_host_element_id = []
-for element_id in wall_element_ids:
-    target_host_element_id.append(element_id)
-
-for element_id in floor_element_ids:
-    target_host_element_id.append(element_id)
-
-for element_id in ceiling_element_ids:
-    target_host_element_id.append(element_id)
-
-for element_id in ramp_element_ids:
-    target_host_element_id.append(element_id)
-
-for element_id in roof_element_ids:
-    target_host_element_id.append(element_id)
-
-for element_id in stairs_collector:
-    target_host_element_id.append(element_id)
+if not stairs_collector:
+    forms.alert("No staircase found in the active document \n\n"
+                            "Run the tool after creating a staircase", title = "Script Exiting", warn_icon = True)
+    script.exit()
 
 options = Options()
 options.View = doc.ActiveView
@@ -222,30 +210,23 @@ options.IncludeNonVisibleObjects = True
 t = Transaction(doc, "Test")
 t.Start()
 
-
 for stair in stairs_collector:
     stair_tread_count = 0
-    # Calculate Run Faces
-    all_upper_faces = []
-
-    # Isolate Stair - Landing & Run Geometries
-    stair_run_ids = stair.GetStairsRuns()
     stair_geometry = []
+    run_faces = []
+    stair_run_ids = stair.GetStairsRuns()
 
     # Calculate Upper Faces for Run
-    treads = 0
-    run_faces = []
     run_index_upper_faces = []
     for run_id in stair_run_ids:
         run = doc.GetElement(run_id)
         stair_tread_count += run.LookupParameter("Actual Number of Treads").AsInteger()
         stair_geometry.append(run.get_Geometry(options))
-
         run_index_upper_faces.append(get_upper_faces(stair, stair_geometry))
 
-    # Remove Duplicate Faces
-    all_faces = []
+# TODO: Research why the code block above gives duplicate top faces when returning the faces for the second run
 
+    all_faces = []
     for run in run_index_upper_faces:
         for face in run:
             all_faces.append(face)
@@ -253,7 +234,8 @@ for stair in stairs_collector:
     all_centroids_z = []
     for face in all_faces:
         all_centroids_z.append(int(get_face_centroid(face).Z * 304.8))
-        
+
+    # Remove Duplicate Faces
     run_upper_faces = []
     seen = set()  # This will contain only unique occurrences
 
@@ -266,6 +248,7 @@ for stair in stairs_collector:
     for index in run_upper_faces:
         run_unique_upper_faces.append(all_faces[index])
         
+# TODO : RUN THE FOLLOWING SORTING CODE ONLY IF THE STAIR IS AN ASSEMBLED STAIR
 
     face_areas = []
     for face in run_unique_upper_faces:
@@ -302,13 +285,7 @@ for stair in stairs_collector:
         stair_geometry.append(landing.get_Geometry(options))
         landing_faces = get_upper_faces(stair, stair_geometry)
 
-
-    # Combine all Faces in one list
-    if landing_faces:
-        test_faces = run_faces + landing_faces
-    else:
-        test_faces = run_faces 
-
+# TODO : CREATE A FUNCTION FOR THE POINT CLOUD CODE BLOCK
             
     all_mid_points = []
     if run_faces:
@@ -336,6 +313,7 @@ for stair in stairs_collector:
                     xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
                     if face.IsInside(uv_point):
                         all_mid_points.append(xyz_point)
+
 
     if landing_faces:
         for face in landing_faces:
@@ -369,7 +347,6 @@ for stair in stairs_collector:
         sketch_plane = SketchPlane.Create(doc, plane)
         model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + 9.186352))), sketch_plane)
         
-
         # intersector = ReferenceIntersector(view)
         # intersector.FindReferencesInRevitLinks = True
         
@@ -379,5 +356,7 @@ for stair in stairs_collector:
         # proximity = (result.Proximity + 1 ) * 304.
         # if proximity < clearance:
         #     print(proximity)
+
+# TODO : FIRE UP THE VISUALIZATION SEQUENCE
 
 t.Commit()
