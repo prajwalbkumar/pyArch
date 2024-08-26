@@ -307,7 +307,9 @@ for stair in stairs_collector:
             # Define grid resolution
             u_divisions = 6
             v_divisions = 10
-            all_points.append(pointgrid(face, u_divisions, v_divisions))
+            point_grid = pointgrid(face, u_divisions, v_divisions)
+            for point in point_grid:
+                all_points.append(point)
 
 
     if landing_faces:
@@ -315,7 +317,9 @@ for stair in stairs_collector:
             # Define grid resolution
             u_divisions = 20
             v_divisions = 20
-            all_points.append(pointgrid(face, u_divisions, v_divisions))
+            point_grid = pointgrid(face, u_divisions, v_divisions)
+            for point in point_grid:
+                all_points.append(point)
    
     direction = XYZ(0,0,1)
     for point in all_points:
