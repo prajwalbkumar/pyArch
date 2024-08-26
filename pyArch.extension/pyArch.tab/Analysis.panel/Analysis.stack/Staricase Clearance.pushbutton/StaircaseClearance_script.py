@@ -17,7 +17,6 @@ app = __revit__.Application # Returns the Revit Application Object
 output = script.get_output()
 
 
-
 def get_inflated_bbox(element, clearance):
     bbox = element.get_BoundingBox(None)
     # print("Minimum: {}" .format(bbox.Min))
@@ -86,6 +85,31 @@ def get_face_centroid(face):
     return None
 
 
+def pointgrid(face, u_divisions, v_divisions):
+
+    u_min = face.GetBoundingBox().Min.U
+    u_max = face.GetBoundingBox().Max.U
+    v_min = face.GetBoundingBox().Min.V
+    v_max = face.GetBoundingBox().Max.V
+
+    # Calculate step size in UV space
+    u_step = (u_max - u_min) / u_divisions
+    v_step = (v_max - v_min) / v_divisions
+
+    face_point_grid = []
+    for i in range(1, u_divisions):
+        for j in range(1,v_divisions):
+            u = u_min + i * u_step
+            v = v_min + j * v_step
+            uv_point = UV(u, v)
+            xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
+            if face.IsInside(uv_point):
+                face_point_grid.append(xyz_point)
+    
+    return face_point_grid
+
+
+
 view = doc.ActiveView
 type = str(type(view))
 
@@ -96,31 +120,22 @@ if not type == "<type 'View3D'>":
     script.exit()
 
 # Relevant Codes
-code = ["NFPA", "FRENCH", "IBC", "BS-EN", "SBC", "NBC", "DCD"]
+code = ["NFPA", "IBC", "SBC", "DCD"]
 
 # Prompt to choose a Code
 user_code = forms.SelectFromList.show(code, title="Select Relevent Code", width=300, height=300, button_name="Select Code", multiselect=False)
 
 if user_code == code[0]:
-    clearance = 2800
+    clearance = 2030
 
 elif user_code == code[1]:
-    clearance = 2800
+    clearance = 2032
 
 elif user_code == code[2]:
-    clearance = 2800
+    clearance = 2100
 
 elif user_code == code[3]:
-    clearance = 2800
-
-elif user_code == code[4]:
-    clearance = 2800
-
-elif user_code == code[5]:
-    clearance = 2800
-
-elif user_code == code[6]:
-    clearance = 2800
+    clearance = 2030
 
 else:
     script.exit()
@@ -210,7 +225,9 @@ options.IncludeNonVisibleObjects = True
 t = Transaction(doc, "Test")
 t.Start()
 
+failed_data = []
 for stair in stairs_collector:
+    failed_counter = 0
     stair_tread_count = 0
     stair_geometry = []
     run_faces = []
@@ -248,8 +265,6 @@ for stair in stairs_collector:
     for index in run_upper_faces:
         run_unique_upper_faces.append(all_faces[index])
         
-# TODO : RUN THE FOLLOWING SORTING CODE ONLY IF THE STAIR IS AN ASSEMBLED STAIR
-
     face_areas = []
     for face in run_unique_upper_faces:
         face_areas.append(face.Area)
@@ -285,78 +300,66 @@ for stair in stairs_collector:
         stair_geometry.append(landing.get_Geometry(options))
         landing_faces = get_upper_faces(stair, stair_geometry)
 
-# TODO : CREATE A FUNCTION FOR THE POINT CLOUD CODE BLOCK
             
-    all_mid_points = []
+    all_points = []
     if run_faces:
         for face in run_faces:
-
-            u_min = face.GetBoundingBox().Min.U
-            u_max = face.GetBoundingBox().Max.U
-            v_min = face.GetBoundingBox().Min.V
-            v_max = face.GetBoundingBox().Max.V
-
             # Define grid resolution
-            u_divisions = 3
-            v_divisions = 5
-
-            # Calculate step size in UV space
-            u_step = (u_max - u_min) / u_divisions
-            v_step = (v_max - v_min) / v_divisions
-
-
-            for i in range(u_divisions + 1):
-                for j in range(v_divisions + 1):
-                    u = u_min + i * u_step
-                    v = v_min + j * v_step
-                    uv_point = UV(u, v)
-                    xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
-                    if face.IsInside(uv_point):
-                        all_mid_points.append(xyz_point)
+            u_divisions = 6
+            v_divisions = 10
+            all_points.append(pointgrid(face, u_divisions, v_divisions))
 
 
     if landing_faces:
         for face in landing_faces:
-
-            u_min = face.GetBoundingBox().Min.U
-            u_max = face.GetBoundingBox().Max.U
-            v_min = face.GetBoundingBox().Min.V
-            v_max = face.GetBoundingBox().Max.V
-
             # Define grid resolution
-            u_divisions = 10
-            v_divisions = 10
-
-            # Calculate step size in UV space
-            u_step = (u_max - u_min) / u_divisions
-            v_step = (v_max - v_min) / v_divisions
-
-
-            for i in range(u_divisions + 1):
-                for j in range(v_divisions + 1):
-                    u = u_min + i * u_step
-                    v = v_min + j * v_step
-                    uv_point = UV(u, v)
-                    xyz_point = face.Evaluate(uv_point)  # Evaluate the 3D point on the face
-                    if face.IsInside(uv_point):
-                        all_mid_points.append(xyz_point)
-    
+            u_divisions = 20
+            v_divisions = 20
+            all_points.append(pointgrid(face, u_divisions, v_divisions))
+   
     direction = XYZ(0,0,1)
-    for point in all_mid_points:
-        plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
-        sketch_plane = SketchPlane.Create(doc, plane)
-        model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + 9.186352))), sketch_plane)
+    for point in all_points:
+        intersector = ReferenceIntersector(view)
+        intersector.FindReferencesInRevitLinks = True
         
-        # intersector = ReferenceIntersector(view)
-        # intersector.FindReferencesInRevitLinks = True
-        
-        # result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
-        # if not result: 
-        #     continue
-        # proximity = (result.Proximity + 1 ) * 304.
-        # if proximity < clearance:
-        #     print(proximity)
+        result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
+        if not result: 
+            continue
+        proximity = (result.Proximity + 1 ) * 304.
+        if proximity < clearance:
+            failed_counter += 1
+            # # Visualize Rays
+            # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
+            # sketch_plane = SketchPlane.Create(doc, plane)
+            # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
+    
 
-# TODO : FIRE UP THE VISUALIZATION SEQUENCE
+    # TODO : FIRE UP THE VISUALIZATION SEQUENCE
+
+    if failed_counter:
+        failed_stair_data = [
+            output.linkify(stair.Id),
+            stair.LookupParameter("Base Level").AsValueString(),
+            stair.LookupParameter("Top Level").AsValueString(),
+            stair.LookupParameter("Actual Riser Height").AsValueString(),
+            stair.LookupParameter("Actual Number of Risers").AsValueString(),
+            "OVERHEAD NOT CLEAR"
+        ]
+        failed_data.append(failed_stair_data)
+
+
+if failed_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID", "BASE LEVEL", "TOP LEVEL", "RISER HEIGHT", "NO OF RISERS", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**OVERHEAD NOT CLEAR** - The clearance does not meet the minimum requriement of {}mm\n" .format(clearance))
+    output.print_md("---")
+else:
+    output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
+    output.print_md("---")
 
 t.Commit()
