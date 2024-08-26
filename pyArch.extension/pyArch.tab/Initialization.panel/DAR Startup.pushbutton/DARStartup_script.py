@@ -31,10 +31,15 @@ new_document.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
 
 # Prompt user to select a destination folder
 
-input = forms.alert("Select the location to save the new project", title = "Select Destination Folder", warn_icon=True, options= ["Browse Folder Location"])
+input = forms.alert("Select File Location", title = "Select Folder", warn_icon=True, options= ["Browse Folder Location"])
 
 if input:
     save_folder = forms.pick_folder(title="Select Destination Folder")
+
+if not input:
+    forms.alert("No folder selected. Exiting the script.", title = "File Not Created", warn_icon=True)
+    script.exit()
+
 if not save_folder:
     forms.alert("No folder selected. Exiting the script.", title = "File Not Created", warn_icon=True)
     script.exit()
@@ -76,4 +81,6 @@ new_document.SaveAs(save_path, save_options)
 # Open and activate the saved document
 ui_doc.Application.OpenAndActivateDocument(save_path)
 
-# TODO: Give final prompt
+# Give final prompt
+forms.alert("New Project File Created", title = "File Created", warn_icon=False)
+
