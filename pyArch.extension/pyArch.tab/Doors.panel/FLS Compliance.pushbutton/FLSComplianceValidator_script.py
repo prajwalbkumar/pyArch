@@ -139,12 +139,17 @@ doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING"
 # Checks for Single Doors
 failed_data = []
 skipped_doors = []
+failed_single_door_ids = []
+failed_single_door_error_code= []
+failed_double_door_ids = []
+failed_double_door_error_code= []
 for door in door_collector:
+    error_code = ""
     failed_door = False
     error_message = ""
     symbol = door.Symbol
     try:
-        door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error heree. Door might not have Door Type Parameter sometimes.
+        door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error here. Door might not have Door Type Parameter sometimes.
         if not door_type.upper() in doors_excluded:
             # Check if the Door is Single Panel or More
             if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
@@ -154,15 +159,23 @@ for door in door_collector:
                 if not (door_width >= min_single_leaf):
                     error_message += "The Door Width should be larger than or equal to " + str(min_single_leaf) + ". "
                     failed_door = True
+                    error_code += "A"
 
                 if not (door_width <= max_single_leaf):
                     error_message += "The Door Width should be smaller than or equal to " + str(max_single_leaf) + ". "
                     failed_door = True
+                    error_code += "B"
 
                 if not (door_height >= min_height):
                     error_message += "The Door Height should be larger than or equal to " + str(min_height) + ". "
                     failed_door = True
-                
+                    error_code += "C"
+
+                if error_code:
+                    failed_single_door_error_code.append(error_code)
+                    failed_single_door_ids.append(door.Id)
+                  
+
             else:
                 # Check if the Door has equal leaves
                 if symbol.LookupParameter("Equal_Leaves").AsInteger() == 1:
@@ -173,14 +186,21 @@ for door in door_collector:
                     if not ((door_width / no_of_leaves) >= min_double_leaf):
                         error_message += "The Leaf Width should be larger than or equal to " + str(min_double_leaf) + ". "
                         failed_door = True
+                        error_code += "A"
 
                     if not ((door_width / no_of_leaves) <= max_double_leaf):
                         error_message += "The Leaf Width should be smaller than or equal to " + str(max_double_leaf) + ". "
                         failed_door = True
+                        error_code += "B"
 
                     if not (door_height >= min_height):
                         error_message += "The Door Height should be larger than or equal to " + str(min_height) + ". "
                         failed_door = True
+                        error_code += "C"
+                    
+                    if error_code:
+                        failed_double_door_error_code.append(error_code)
+                        failed_double_door_ids.append(door.Id)
                     
                 else:
                     door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
@@ -233,44 +253,50 @@ for door in door_collector:
         skipped_doors.append(door)
         continue
 
+if failed_data or skipped_doors:
+    user_action = forms.alert("Few Doors have Errors. Refer to the Report for more information", title = "Errors Found", warn_icon = True, options = ["Show Report", "Auto - Correct Doors"])
 
-if failed_data:
-    output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
+    if user_action == "Show Report":
+        if failed_data:
+            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
 
-if skipped_doors:
-    failed_data = []
-    for door in skipped_doors:
-        if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-            door_mark = "NONE"
-        else:
-            door_mark = door.LookupParameter("Mark").AsString().upper()
-        
-        if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-            door_room_name = "NONE"
-        else:
-            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+        if skipped_doors:
+            failed_data = []
+            for door in skipped_doors:
+                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                    door_mark = "NONE"
+                else:
+                    door_mark = door.LookupParameter("Mark").AsString().upper()
+                
+                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                    door_room_name = "NONE"
+                else:
+                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-        if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-            door_room_number = "NONE"
-        else:
-            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                    door_room_number = "NONE"
+                else:
+                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-        failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
+                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
 
-    output.print_md("##⚠️ Doors Skipped ☹️" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
+            output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
+            output.print_md("---") # Markdown Line Break
+            output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
+            print("\n\n")
+            output.print_md("---") # Markdown Line Break
+
+        if user_action == "Auto - Correct Doors":
+            pass
 
 
 if not failed_data and not skipped_doors:
-    output.print_md("##✅ {} Completed. No Issues Found 😃" .format(test)) # Markdown Heading 2
+    output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
 
