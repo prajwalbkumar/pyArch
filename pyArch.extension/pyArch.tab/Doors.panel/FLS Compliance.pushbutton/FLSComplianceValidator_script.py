@@ -105,6 +105,8 @@ if not type == "<type 'View3D'>":
 
     script.exit()
 
+minimum_door_nib = 100
+
 (
     code,
     min_single_leaf,
@@ -312,6 +314,7 @@ if not failed_data and not skipped_doors:
 t = Transaction(doc, "Test")
 t.Start()
 for index, id in enumerate(failed_single_door_ids):
+    door_proximities = []
     calculation_points = []
     door = doc.GetElement(id)
 
@@ -326,23 +329,47 @@ for index, id in enumerate(failed_single_door_ids):
                 
 
     hosted_wall = door.Host
-    wall_direction = hosted_wall.Location.Curve.Direction
-
+    directions = []
+    wall_direction = hosted_wall.Location.Curve.Direction.Normalize()
+    directions.append(wall_direction)
+    # print(wall_direction)
+    # print(wall_direction.Negate())
+    directions.append(wall_direction.Negate())
 
     intersector = ReferenceIntersector(view)
     intersector.FindReferencesInRevitLinks = True
     for point in calculation_points:    
-        result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z)), wall_direction)
+        for direction in directions:
+            result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z)), direction)
 
-        if not result: 
-            continue
-        proximity = (result.Proximity)
-        print(proximity * 304)
+            if not result: 
+                continue
+            proximity = (result.Proximity)
+            door_proximities.append(proximity)       
 
-        plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
-        sketch_plane = SketchPlane.Create(doc, plane)
-        model_line = doc.Create.NewModelCurve(Line.CreateBound(point, (point + XYZ(wall_direction.X * proximity, wall_direction.Y * proximity, wall_direction.Z))), sketch_plane)
+            # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
+            # sketch_plane = SketchPlane.Create(doc, plane)
+            # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, (point + XYZ(direction.X * proximity, direction.Y * proximity, direction.Z))), sketch_plane)
 
+    if not door_proximities:
+        continue
+
+    door_proximities.sort()
+    closest_object_distance = door_proximities[0]
+    
+    if "A" in failed_single_door_error_code[index]:
+        # Check if the smallest proximity distance can accomodate for the increase in the door width
+        updated_rough_width = (door.Symbol.LookupParameter("Rough Width").AsDouble() - door.Symbol.LookupParameter("Width").AsDouble()) + (min_single_leaf * 0.00328084)
+
+        if abs(closest_object_distance - (updated_rough_width / 2)) < 0.492126:
+            print(abs(closest_object_distance - (updated_rough_width / 2)))
+            print("Cannot Update")
+        
+        else:
+            print(abs(closest_object_distance - (updated_rough_width / 2)))
+            print("YAY")
+
+    
     # print("Door ID {} and Code {}" .format(id, failed_single_door_error_code[index]))
 
 t.Commit()
