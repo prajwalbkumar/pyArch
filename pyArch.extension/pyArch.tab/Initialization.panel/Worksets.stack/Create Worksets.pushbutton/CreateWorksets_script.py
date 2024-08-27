@@ -45,7 +45,7 @@ if not doc.IsWorkshared:
         script.exit()
 
 # Prompt user for trade selection
-ops = ['ARCHITECTURE', 'INTERIOR', 'SIGNAGE', 'EXIT']
+ops = ['Architecture', 'Interior', 'Signage', 'Exit']
 selected_option = forms.SelectFromList.show(
     ops,
     multiselect=False,
