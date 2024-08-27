@@ -95,6 +95,16 @@ def code_csv_reader():
 
 
 # MAIN SCRIPT
+
+view = doc.ActiveView
+type = str(type(view))
+
+if not type == "<type 'View3D'>":
+    forms.alert("Active View must be a 3D View \n\n"
+                        "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
+
+    script.exit()
+
 (
     code,
     min_single_leaf,
@@ -248,7 +258,6 @@ for door in door_collector:
 
             failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, error_message])
 
-
     except:
         skipped_doors.append(door)
         continue
@@ -300,3 +309,40 @@ if not failed_data and not skipped_doors:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
 
+t = Transaction(doc, "Test")
+t.Start()
+for index, id in enumerate(failed_single_door_ids):
+    calculation_points = []
+    door = doc.GetElement(id)
+
+    options = Options()
+    options.IncludeNonVisibleObjects = True
+    door_geometry = door.get_Geometry(options)
+    for component in door_geometry:
+        geometry_element = component.GetInstanceGeometry()
+        for geometry in geometry_element:
+            if geometry.ToString() == "Autodesk.Revit.DB.NurbSpline":
+                calculation_points.append(geometry.GetEndPoint(1))
+                
+
+    hosted_wall = door.Host
+    wall_direction = hosted_wall.Location.Curve.Direction
+
+
+    intersector = ReferenceIntersector(view)
+    intersector.FindReferencesInRevitLinks = True
+    for point in calculation_points:    
+        result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z)), wall_direction)
+
+        if not result: 
+            continue
+        proximity = (result.Proximity)
+        print(proximity * 304)
+
+        plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
+        sketch_plane = SketchPlane.Create(doc, plane)
+        model_line = doc.Create.NewModelCurve(Line.CreateBound(point, (point + XYZ(wall_direction.X * proximity, wall_direction.Y * proximity, wall_direction.Z))), sketch_plane)
+
+    # print("Door ID {} and Code {}" .format(id, failed_single_door_error_code[index]))
+
+t.Commit()

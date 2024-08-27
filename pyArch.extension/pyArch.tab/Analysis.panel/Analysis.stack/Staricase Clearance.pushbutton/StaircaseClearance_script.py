@@ -329,7 +329,7 @@ for stair in stairs_collector:
         result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
         if not result: 
             continue
-        proximity = (result.Proximity + 1 ) * 304.
+        proximity = (result.Proximity + 1 ) * 304
         if proximity < clearance:
             failed_counter += 1
             # Visualize Rays
