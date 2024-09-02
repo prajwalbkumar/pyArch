@@ -265,9 +265,9 @@ for door in door_collector:
         continue
 
 if failed_data or skipped_doors:
-    user_action = forms.alert("Few Doors have Errors. Refer to the Report for more information", title = "Errors Found", warn_icon = True, options = ["Show Report", "Auto - Correct Doors"])
+    user_action = forms.alert("Few Doors have Errors. Refer to the Report for more information", title = "Errors Found", warn_icon = True, options = ["Show Report", "Show Report and Auto - Correct Doors"])
 
-    if user_action == "Show Report":
+    if user_action == "Show Report" or user_action == "Show Report and Auto - Correct Doors":
         if failed_data:
             output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
             output.print_md("---") # Markdown Line Break
@@ -303,15 +303,18 @@ if failed_data or skipped_doors:
             print("\n\n")
             output.print_md("---") # Markdown Line Break
 
-        if user_action == "Auto - Correct Doors":
-            pass
+    if not user_action:
+        script.exit()
 
 
 if not failed_data and not skipped_doors:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
 
-t = Transaction(doc, "Test")
+failed_door_ids = []
+update_code_a_doors = []
+
+t = Transaction(doc, "Update Door Families")
 t.Start()
 for index, id in enumerate(failed_single_door_ids):
     door_proximities = []
@@ -361,15 +364,123 @@ for index, id in enumerate(failed_single_door_ids):
         # Check if the smallest proximity distance can accomodate for the increase in the door width
         updated_rough_width = (door.Symbol.LookupParameter("Rough Width").AsDouble() - door.Symbol.LookupParameter("Width").AsDouble()) + (min_single_leaf * 0.00328084)
 
-        if abs(closest_object_distance - (updated_rough_width / 2)) < 0.492126:
+        if abs(closest_object_distance - (updated_rough_width / 2)) < 0.492126: # Check to see if Door doesn't exceed the minimum nib length. 
             print(abs(closest_object_distance - (updated_rough_width / 2)))
-            print("Cannot Update")
+            # These are single panelled doors that cannot be updated with the correct number and need further investigation
+            # Create a table of the same data for the user to change / update manually
+            failed_door_ids.append(id) 
+            
         
-        else:
-            print(abs(closest_object_distance - (updated_rough_width / 2)))
-            print("YAY")
+        else: # These doors are smaller in size and can be updated to their larger versions.
 
+            '''
+            Update the exiting door type value dimensions. This is easier to execute, making sure that if more than one instance of the family symbol exists, all values get updated automatically. 
+            This can lead to some doors that do not comply with the door nib requirement. These doors can be later checked from the report. 
+
+            '''
+            door.Symbol.LookupParameter("Width").Set(min_single_leaf * 0.00328084)
+
+            '''
+            The code below updates to the type of the door that is already available in the document. 
+            This may lead to irrational selection of door, with correct width and height parameters. 
+
+            '''
+
+            # # Collect all FamilySymbol elements (types) in the document
+            # collector = FilteredElementCollector(doc).OfClass(FamilySymbol).OfCategory(BuiltInCategory.OST_Doors)
+
+            # # Filter out only those symbols that belong to the specified family name
+            # door_types = []
+            # for symbol in collector:
+            #     if symbol.FamilyName == family_name:
+            #         door_types.append(symbol)
+
+            # # Display the results
+            # if door_types:
+            #     for door_type in door_types:
+            #         if int((door_type.LookupParameter("Width").AsDouble()) * 304.8) == int(min_single_leaf) and int((door_type.LookupParameter("Height").AsDouble()) * 304.8) >= int(min_height) :
+            #             print("Can be swapped")
+            #             door.ChangeTypeId(door_type.Id)
+            #         else:
+            #             print("No")     
+            # else:
+            #     print("No door types found for family '{}'." .format(family_name))
     
-    # print("Door ID {} and Code {}" .format(id, failed_single_door_error_code[index]))
+    if "B" in failed_single_door_error_code[index]:
+        door.Symbol.LookupParameter("Width").Set(max_single_leaf * 0.00328084)
 
+    if "C" in failed_single_door_error_code[index]:
+        door.Symbol.LookupParameter("Height").Set(min_height * 0.00328084)
+
+
+for index, id in enumerate(failed_double_door_ids):
+    door_proximities = []
+    calculation_points = []
+    door = doc.GetElement(id)
+
+    options = Options()
+    options.IncludeNonVisibleObjects = True
+    door_geometry = door.get_Geometry(options)
+    for component in door_geometry:
+        geometry_element = component.GetInstanceGeometry()
+        for geometry in geometry_element:
+            if geometry.ToString() == "Autodesk.Revit.DB.NurbSpline":
+                calculation_points.append(geometry.GetEndPoint(1))
+                
+
+    hosted_wall = door.Host
+    directions = []
+    wall_direction = hosted_wall.Location.Curve.Direction.Normalize()
+    directions.append(wall_direction)
+    # print(wall_direction)
+    # print(wall_direction.Negate())
+    directions.append(wall_direction.Negate())
+
+    intersector = ReferenceIntersector(view)
+    intersector.FindReferencesInRevitLinks = True
+    for point in calculation_points:    
+        for direction in directions:
+            result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z)), direction)
+
+            if not result: 
+                continue
+            proximity = (result.Proximity)
+            door_proximities.append(proximity)       
+
+            # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
+            # sketch_plane = SketchPlane.Create(doc, plane)
+            # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, (point + XYZ(direction.X * proximity, direction.Y * proximity, direction.Z))), sketch_plane)
+
+    if not door_proximities:
+        continue
+
+    door_proximities.sort()
+    closest_object_distance = door_proximities[0]
+    
+    if "A" in failed_double_door_error_code[index]:
+        # Check if the smallest proximity distance can accomodate for the increase in the door width
+        updated_rough_width = (door.Symbol.LookupParameter("Rough Width").AsDouble() - door.Symbol.LookupParameter("Width").AsDouble()) + (min_single_leaf * 0.00328084)
+
+        if abs(closest_object_distance - (updated_rough_width / 2)) < 0.492126: # Check to see if Door doesn't exceed the minimum nib length. 
+            print(abs(closest_object_distance - (updated_rough_width / 2)))
+            # These are single panelled doors that cannot be updated with the correct number and need further investigation
+            # Create a table of the same data for the user to change / update manually
+            failed_door_ids.append(id) 
+            
+        
+        else: # These doors are smaller in size and can be updated to their larger versions.
+
+            '''
+            Update the exiting door type value dimensions. This is easier to execute, making sure that if more than one instance of the family symbol exists, all values get updated automatically. 
+            This can lead to some doors that do not comply with the door nib requirement. These doors can be later checked from the report. 
+
+            '''
+            door.Symbol.LookupParameter("Width").Set(min_double_leaf * 0.00328084)
+    
+    if "B" in failed_double_door_error_code[index]:
+        door.Symbol.LookupParameter("Width").Set(max_double_leaf * 0.00328084)
+
+    if "C" in failed_double_door_error_code[index]:
+        door.Symbol.LookupParameter("Height").Set(min_height * 0.00328084)
+            
 t.Commit()
