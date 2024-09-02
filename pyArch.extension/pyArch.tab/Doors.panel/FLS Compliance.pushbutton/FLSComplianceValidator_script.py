@@ -318,6 +318,8 @@ t = Transaction(doc, "Update Door Families")
 t.Start()
 for index, id in enumerate(failed_single_door_ids):
     door_proximities = []
+    rays = []
+    ray_direction = []
     calculation_points = []
     door = doc.GetElement(id)
 
@@ -335,8 +337,6 @@ for index, id in enumerate(failed_single_door_ids):
     directions = []
     wall_direction = hosted_wall.Location.Curve.Direction.Normalize()
     directions.append(wall_direction)
-    # print(wall_direction)
-    # print(wall_direction.Negate())
     directions.append(wall_direction.Negate())
 
     intersector = ReferenceIntersector(view)
@@ -348,7 +348,9 @@ for index, id in enumerate(failed_single_door_ids):
             if not result: 
                 continue
             proximity = (result.Proximity)
-            door_proximities.append(proximity)       
+            door_proximities.append(proximity)
+            rays.append(Line.CreateBound(point, (point + XYZ(direction.X * proximity, direction.Y * proximity, direction.Z))))
+            ray_direction.append(direction)
 
             # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
             # sketch_plane = SketchPlane.Create(doc, plane)
@@ -357,18 +359,61 @@ for index, id in enumerate(failed_single_door_ids):
     if not door_proximities:
         continue
 
-    door_proximities.sort()
-    closest_object_distance = door_proximities[0]
+
+    # Pair the proximity values with their corresponding rays
+    paired_proximity_rays = list(zip(door_proximities, rays, ray_direction))
+
+    # Sort the pairs based on proximity values (first element in the pair)
+    paired_proximity_rays.sort(key=lambda x: x[0])
+
+    # Unzip the sorted pairs back into two separate lists
+    door_proximities_sorted, rays_sorted, ray_direction_sorted = zip(*paired_proximity_rays)
+
+    # Convert the tuples back to lists, if needed
+    door_proximities_sorted = list(door_proximities_sorted)
+    rays_sorted = list(rays_sorted)
+    ray_direction_sorted = list(ray_direction_sorted)
+
     
     if "A" in failed_single_door_error_code[index]:
         # Check if the smallest proximity distance can accomodate for the increase in the door width
         updated_rough_width = (door.Symbol.LookupParameter("Rough Width").AsDouble() - door.Symbol.LookupParameter("Width").AsDouble()) + (min_single_leaf * 0.00328084)
 
-        if abs(closest_object_distance - (updated_rough_width / 2)) < 0.492126: # Check to see if Door doesn't exceed the minimum nib length. 
-            print(abs(closest_object_distance - (updated_rough_width / 2)))
+        nib_calculation = abs(door_proximities_sorted[0] - (updated_rough_width / 2))
+        move_distance = nib_calculation + 0.492126
+        
+        if nib_calculation < 0.492126: # Check to see if Door doesn't exceed the minimum nib length. 
             # These are single panelled doors that cannot be updated with the correct number and need further investigation
             # Create a table of the same data for the user to change / update manually
-            failed_door_ids.append(id) 
+            opposite_ray_direction = ray_direction_sorted[0].Negate()
+            for i in range(1,len(rays_sorted)):
+                if ray_direction_sorted[i].X == opposite_ray_direction.X and ray_direction_sorted[i].Y == opposite_ray_direction.Y and ray_direction_sorted[i].Z == opposite_ray_direction.Z:
+                    if (door_proximities_sorted[i] - (updated_rough_width / 2)) - nib_calculation > 0.492126:
+                        print("Can be Shifted")
+                        # Do the shifting and stop the loop
+                        mid_point = rays_sorted[i].GetEndPoint(0)
+                        offset_point = mid_point + XYZ(opposite_ray_direction.X * move_distance, opposite_ray_direction.Y * move_distance, direction.Z)
+
+                        old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
+                        new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
+
+                        door.Location.Move(new_location - old_location)
+
+                        # Update the Door Values
+                        door.Symbol.LookupParameter("Width").Set(min_single_leaf * 0.00328084)
+                        
+                        # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
+                        # sketch_plane = SketchPlane.Create(doc, plane)
+                        # model_line = doc.Create.NewModelCurve(Line.CreateBound(mid_point, new_location), sketch_plane)
+                        break
+
+                    else:
+                        failed_door_ids.append(id)
+                        break
+                        
+
+
+                    
             
         
         else: # These doors are smaller in size and can be updated to their larger versions.
@@ -406,11 +451,7 @@ for index, id in enumerate(failed_single_door_ids):
             # else:
             #     print("No door types found for family '{}'." .format(family_name))
     
-    if "B" in failed_single_door_error_code[index]:
-        door.Symbol.LookupParameter("Width").Set(max_single_leaf * 0.00328084)
 
-    if "C" in failed_single_door_error_code[index]:
-        door.Symbol.LookupParameter("Height").Set(min_height * 0.00328084)
 
 
 for index, id in enumerate(failed_double_door_ids):
