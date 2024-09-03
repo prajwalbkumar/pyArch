@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''FLS Doors Validator'''
-__title__ = "FLS Compliance Validator"
+'''Rename Doors'''
+__title__ = "Rename Doors"
 __author__ = "prajwalbkumar"
 
 
