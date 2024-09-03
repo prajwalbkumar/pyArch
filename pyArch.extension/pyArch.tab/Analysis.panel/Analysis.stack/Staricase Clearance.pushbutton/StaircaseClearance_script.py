@@ -305,8 +305,8 @@ for stair in stairs_collector:
     if run_faces:
         for face in run_faces:
             # Define grid resolution
-            u_divisions = 6
-            v_divisions = 10
+            u_divisions = 2
+            v_divisions = 4
             point_grid = pointgrid(face, u_divisions, v_divisions)
             for point in point_grid:
                 all_points.append(point)
@@ -315,8 +315,8 @@ for stair in stairs_collector:
     if landing_faces:
         for face in landing_faces:
             # Define grid resolution
-            u_divisions = 20
-            v_divisions = 20
+            u_divisions = 9
+            v_divisions = 9
             point_grid = pointgrid(face, u_divisions, v_divisions)
             for point in point_grid:
                 all_points.append(point)
@@ -338,7 +338,7 @@ for stair in stairs_collector:
             model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
     
 
-    # TODO : FIRE UP THE VISUALIZATION SEQUENCE
+
 
     if failed_counter:
         failed_stair_data = [
