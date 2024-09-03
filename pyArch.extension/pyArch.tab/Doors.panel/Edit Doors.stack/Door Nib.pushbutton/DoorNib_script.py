@@ -46,57 +46,8 @@ def doors_in_document():
     return doors
 
 
-# Definition to extract data from the CSV File
-def code_csv_reader():
-    try:
-        csv_filename = "FLS Door Codes.csv"
-        file = os.path.join(script_dir, csv_filename) 
-        # file = r"C:\Users\pkumar2\Desktop\pyRevit Toolbars\UnBlunder\unBlunder.extension\unBlunder.tab\Doors.panel\FLSDoors.pushbutton\FLS Door Codes.csv"
-        with open(file, "r") as csv_file:
-            csv_reader = csv.DictReader(csv_file)
-
-            code = []
-            min_single_leaf = []
-            min_unq_main_leaf = []
-            min_unq_side_leaf = []
-            min_double_leaf = []
-            max_single_leaf = []
-            max_unq_main_leaf = []
-            max_unq_side_leaf = []
-            max_double_leaf = []
-            min_height = []
-
-            for row in csv_reader:
-                code.append(row["CODE"])
-                min_single_leaf.append(row["MIN SINGLE LEAF"])
-                min_unq_main_leaf.append(row["MIN UNQ MAIN LEAF"])
-                min_unq_side_leaf.append(row["MIN UNQ SIDE LEAF"])
-                min_double_leaf.append(row["MIN DOUBLE LEAF"])
-                max_single_leaf.append(row["MAX SINGLE LEAF"])
-                max_unq_main_leaf.append(row["MAX UNQ MAIN LEAF"])
-                max_unq_side_leaf.append(row["MAX UNQ SIDE LEAF"])
-                max_double_leaf.append(row["MAX DOUBLE LEAF"])
-                min_height.append(row["MIN HEIGHT"])
-
-            return (
-                code,
-                min_single_leaf,
-                min_unq_main_leaf,
-                min_unq_side_leaf,
-                min_double_leaf,
-                max_single_leaf,
-                max_unq_main_leaf,
-                max_unq_side_leaf,
-                max_double_leaf,
-                min_height,
-            )
-    except:
-        forms.alert("CSV Not Found - Contact the Author to Troubleshoot!", title='Script Cancelled')
-        script.exit()
-
-
 # Definition to update doors and return failed doors
-def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, min_leaf, max_leaf):
+def update_doors(door_ids, mimimum_nib_dimension):
     mimimum_nib_dimension = int(mimimum_nib_dimension) * 0.00328084
     run_door_ids = []
     run_message = []
@@ -160,55 +111,36 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
 
         run_log_code = ""
         
-        if "A" in door_error_code[index]:
-            # Check if the smallest proximity distance can accomodate for the increase in the door width
-            updated_rough_width = (door.Symbol.LookupParameter("Rough Width").AsDouble() - door.Symbol.LookupParameter("Width").AsDouble()) + (min_leaf * 0.00328084)
+        # Check if the smallest proximity distance can accomodate for the increase in the door width
+        rough_width = door.Symbol.LookupParameter("Rough Width").AsDouble()
 
-            nib_calculation = door_proximities_sorted[0] - (updated_rough_width / 2)
+        nib_calculation = door_proximities_sorted[0] - (rough_width / 2)
 
-            if nib_calculation < 0:
-                move_distance = abs(nib_calculation) + mimimum_nib_dimension
-            else:
-                move_distance = abs(nib_calculation - mimimum_nib_dimension)
-            
-            if nib_calculation < mimimum_nib_dimension: # Check to see if Door doesn't exceed the minimum nib length. 
-                opposite_ray_direction = ray_direction_sorted[0].Negate()
-                for i in range(1,len(rays_sorted)):
-                    if ray_direction_sorted[i].X == opposite_ray_direction.X and ray_direction_sorted[i].Y == opposite_ray_direction.Y and ray_direction_sorted[i].Z == opposite_ray_direction.Z:
-                        if (door_proximities_sorted[i] - (updated_rough_width / 2)) - nib_calculation > mimimum_nib_dimension:
-                            # Do the shifting and stop the loop
-                            mid_point = rays_sorted[i].GetEndPoint(0)
-                            offset_point = mid_point + XYZ(opposite_ray_direction.X * move_distance, opposite_ray_direction.Y * move_distance, direction.Z)
-
-                            old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
-                            new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
-
-                            door.Location.Move(new_location - old_location)
-
-                            # Update the Door Values
-                            door.Symbol.LookupParameter("Width").Set(min_leaf * 0.00328084)
-                            
-                            # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
-                            # sketch_plane = SketchPlane.Create(doc, plane)
-                            # model_line = doc.Create.NewModelCurve(Line.CreateBound(mid_point, new_location), sketch_plane)
-                            run_log_code = run_log_code + "CODE A PASS "
-                            break
-
-                        else:
-                            run_log_code = run_log_code + "CODE A FAIL "
-                            break
-                            
-            else: # These doors are smaller in size and can be updated to their larger versions.
-                door.Symbol.LookupParameter("Width").Set(min_leaf * 0.00328084)
-                run_log_code = run_log_code + "CODE A PASS "
+        if nib_calculation < 0:
+            move_distance = abs(nib_calculation) + mimimum_nib_dimension
+        else:
+            move_distance = abs(nib_calculation - mimimum_nib_dimension)
         
-        if "B" in door_error_code[index]:
-            door.Symbol.LookupParameter("Width").Set(max_leaf * 0.00328084)
-            run_log_code = run_log_code + "CODE B PASS "
+        if nib_calculation < mimimum_nib_dimension: # Check to see if Door doesn't exceed the minimum nib length. 
+            opposite_ray_direction = ray_direction_sorted[0].Negate()
+            for i in range(1,len(rays_sorted)):
+                if ray_direction_sorted[i].X == opposite_ray_direction.X and ray_direction_sorted[i].Y == opposite_ray_direction.Y and ray_direction_sorted[i].Z == opposite_ray_direction.Z:
+                    if (door_proximities_sorted[i] - (rough_width / 2)) - abs(nib_calculation) > mimimum_nib_dimension:
+                        # Do the shifting and stop the loop
+                        mid_point = rays_sorted[i].GetEndPoint(0)
+                        offset_point = mid_point + XYZ(opposite_ray_direction.X * move_distance, opposite_ray_direction.Y * move_distance, direction.Z)
 
-        if "C" in door_error_code[index]:
-            door.Symbol.LookupParameter("Height").Set(min_height * 0.00328084)
-            run_log_code = run_log_code + "CODE C PASS "
+                        old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
+                        new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
+
+                        door.Location.Move(new_location - old_location)
+
+                        run_log_code = run_log_code + "CODE A PASS "
+                        break
+
+                    else:
+                        run_log_code = run_log_code + "CODE A FAIL "
+                        break
 
         run_door_ids.append(id)
         run_message.append(run_log_code)
@@ -230,61 +162,20 @@ if not type == "<type 'View3D'>":
 
 minimum_door_nib = 100
 
-(
-    code,
-    min_single_leaf,
-    min_unq_main_leaf,
-    min_unq_side_leaf,
-    min_double_leaf,
-    max_single_leaf,
-    max_unq_main_leaf,
-    max_unq_side_leaf,
-    max_double_leaf,
-    min_height,
-) = code_csv_reader()
-
-# UI to Select the Code
-user_code = forms.SelectFromList.show(
-    code, title="Select Relevent Code", width=300, height=300, button_name="Select Code", multiselect=False
-)
-
-if not user_code:
-    script.exit()
-
 mimimum_nib_dimension = forms.ask_for_string(
     title="Minimum Door Nib Dimension",
     prompt="Enter Minimum Door Nib Dimension\n", 
     default="150")
 
-# Find the Index Values of the Code Selected from the Main Code List
-code_row = code.index(user_code)
-
-# Get the Value of the Rows against the Code Selected
-min_single_leaf = int(min_single_leaf[code_row])
-min_unq_main_leaf = int(min_unq_main_leaf[code_row])
-min_unq_side_leaf = int(min_unq_side_leaf[code_row])
-min_double_leaf = int(min_double_leaf[code_row])
-
-max_single_leaf = int(max_single_leaf[code_row])
-max_unq_main_leaf = int(max_unq_main_leaf[code_row])
-max_unq_side_leaf = int(max_unq_side_leaf[code_row])
-max_double_leaf = int(max_double_leaf[code_row])
-
-min_height = int(min_height[code_row])
+if not mimimum_nib_dimension:
+    script.exit()
 
 door_collector = doors_in_document()
 
 doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
-# Checks for Single Doors
-failed_data = []
 skipped_doors = []
-failed_single_door_ids = []
-failed_single_door_error_code= []
-failed_double_door_ids = []
-failed_double_door_error_code= []
-failed_unequal_door_ids = []
-failed_unequal_door_error_code = []
+move_door_ids = []
 for door in door_collector:
     error_code = ""
     failed_door = False
@@ -293,95 +184,22 @@ for door in door_collector:
     try:
         door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error here. Door might not have Door Type Parameter sometimes.
         if not door_type.upper() in doors_excluded:
-            # Check if the Door is Single Panel or More
-            if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
-                # Check Width and Height Requirements
-                door_width = int(convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm"))
-                door_height = int(convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm"))
-                if not (door_width >= min_single_leaf):
-                    error_message += "The Door Width should be larger than or equal to " + str(min_single_leaf) + ". "
-                    failed_door = True
-                    error_code += "A"
+            move_door_ids.append(door.Id)
+  
+    except:
+        skipped_doors.append(door)
+        continue
 
-                if not (door_width <= max_single_leaf):
-                    error_message += "The Door Width should be smaller than or equal to " + str(max_single_leaf) + ". "
-                    failed_door = True
-                    error_code += "B"
-
-                if not (door_height >= min_height):
-                    error_message += "The Door Height should be larger than or equal to " + str(min_height) + ". "
-                    failed_door = True
-                    error_code += "C"
-
-                if error_code:
-                    failed_single_door_error_code.append(error_code)
-                    failed_single_door_ids.append(door.Id)
-                  
-
-            else:
-                # Check if the Door has equal leaves
-                if symbol.LookupParameter("Equal_Leaves").AsInteger() == 1:
-                    door_width = int(convert_internal_units(symbol.LookupParameter("Width").AsDouble(), False, "mm"))
-                    door_height = int(convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm"))
-
-                    no_of_leaves = symbol.LookupParameter("Leaf_Number").AsInteger()
-                    if not ((door_width) >= min_double_leaf):
-                        error_message += "The Door Width should be larger than or equal to " + str(min_double_leaf) + ". "
-                        failed_door = True
-                        error_code += "A"
-
-                    if not ((door_width) <= max_double_leaf):
-                        error_message += "The Door Width should be smaller than or equal to " + str(max_double_leaf) + ". "
-                        failed_door = True
-                        error_code += "B"
-
-                    if not (door_height >= min_height):
-                        error_message += "The Door Height should be larger than or equal to " + str(min_height) + ". "
-                        failed_door = True
-                        error_code += "C"
-                    
-                    if error_code:
-                        failed_double_door_error_code.append(error_code)
-                        failed_double_door_ids.append(door.Id)
-                    
-                else:
-                    door_thickness = convert_internal_units(symbol.LookupParameter("Thickness").AsDouble(), False, "mm")
-
-                    main_leaf = convert_internal_units(symbol.LookupParameter("Main Panel Width").AsDouble(), False, "mm") - door_thickness
-                    side_leaf = convert_internal_units(symbol.LookupParameter("Side Panel Width").AsDouble(), False, "mm") - door_thickness
-
-                    door_height = convert_internal_units(symbol.LookupParameter("Height").AsDouble(), False, "mm")
-
-                    if not (door_height >= min_height):
-                        error_message += "The Door Height should be larger than or equal to " + str(min_height) + ". "
-                        error_code += "CODE C FAIL "
-                        failed_door = True
-                    if not (main_leaf >= min_unq_main_leaf):
-                        error_message += "The Main Leaf Width should be larger than or equal to " + str(min_unq_main_leaf) + ". "
-                        error_code += "CODE D FAIL "
-                        failed_door = True
-
-                    if not (main_leaf <= max_unq_main_leaf):
-                        error_message += "The Main Leaf Width should be smaller than or equal to " + str(max_unq_main_leaf) + ". "
-                        error_code += "CODE E FAIL "
-                        failed_door = True
-
-                    if not (side_leaf >= min_unq_side_leaf):
-                        error_message += "The Side Leaf Width should be larger than or equal to " + str(min_unq_side_leaf) + ". "
-                        error_code += "CODE F FAIL "
-                        failed_door = True
-
-                    if not (side_leaf <= max_unq_side_leaf):
-                        error_message += "The Side Leaf Width should be smaller than or equal to " + str(max_unq_side_leaf) + ". "
-                        error_code += "CODE G FAIL "
-                        failed_door = True
-
-
-                    if error_message:
-                        failed_unequal_door_error_code.append(error_code)
-                        failed_unequal_door_ids.append(door.Id)
-
-        if failed_door:
+failed_data = []
+passed_data = []
+t = Transaction(doc, "Update Door Families")
+t.Start()
+if move_door_ids:
+    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
+    run_door_ids, run_message = zip(*doors_run_log)
+    for index, id in enumerate(run_door_ids):
+        if "FAIL" in run_message[index]:
+            door = doc.GetElement(id)
             if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
                 door_mark = "NONE"
             else:
@@ -397,228 +215,82 @@ for door in door_collector:
             else:
                 door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-            failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, error_message])
+            failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
 
-    except:
-        skipped_doors.append(door)
-        continue
+        if "PASS" in run_message[index]:
+            door = doc.GetElement(id)
+            if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                door_mark = "NONE"
+            else:
+                door_mark = door.LookupParameter("Mark").AsString().upper()
+            
+            if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                door_room_name = "NONE"
+            else:
+                door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-if failed_data or skipped_doors:
-    user_action = forms.alert("Few Doors have Errors. Refer to the Report for more information", title = "Errors Found", warn_icon = True, options = ["Show Report", "Auto - Correct Doors"])
+            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                door_room_number = "NONE"
+            else:
+                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-    if user_action == "Show Report":
-        if failed_data:
-            output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
+            passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
 
-        if skipped_doors:
-            failed_data = []
-            for door in skipped_doors:
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
-                else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
-                
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                    door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+t.Commit()
 
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                    door_room_number = "NONE"
-                else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
-
-            output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
-
-    elif user_action == "Auto - Correct Doors":
-
-        failed_data = []
-        passed_data = []
-        t = Transaction(doc, "Update Door Families")
-        t.Start()
-        if failed_single_door_ids:
-            single_doors_run_log = update_doors(failed_single_door_ids, failed_single_door_error_code, mimimum_nib_dimension, min_height, min_single_leaf, max_single_leaf)
-            run_door_ids, run_message = zip(*single_doors_run_log)
-            for index, id in enumerate(run_door_ids):
-                if "FAIL" in run_message[index]:
-                    door = doc.GetElement(id)
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                    
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                    failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
-
-                if "PASS" in run_message[index]:
-                    door = doc.GetElement(id)
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                    
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                    passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
+# Display all list of failed doors, including unequal doors
+if passed_data:
+    output.print_md("##✅ {} Completed. Instances Have Been Updated 😃" .format(__title__)) # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("✔️ Some issues have been resolved. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data=passed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "SUCCESS CODE"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
+    output.print_md("***✅ SUCCESS CODE REFERENCE***")  # Print a Line
+    output.print_md("---") # Markdown Line Break
+    output.print_md("**CODE A PASS**  - Door Moved")
+    output.print_md("---") # Markdown Line Break
 
 
-        if failed_double_door_ids:
-            double_doors_run_log = update_doors(failed_double_door_ids, failed_double_door_error_code, mimimum_nib_dimension, min_height, min_double_leaf, max_double_leaf)
-            run_door_ids, run_message = zip(*double_doors_run_log)
-            for index, id in enumerate(run_door_ids):
-                if "FAIL" in run_message[index]:
-                    door = doc.GetElement(id)
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                    
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+if failed_data:
+    output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
+    output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+    output.print_md("---") # Markdown Line Break
+    output.print_md("**CODE A FAIL**  - Door could not be moved")
+    output.print_md("---") # Markdown Line Break
 
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                    failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
-                
-                if "PASS" in run_message[index]:
-                    door = doc.GetElement(id)
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                    
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                    passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
-
-        if failed_unequal_door_ids:
-            for index, id in enumerate(failed_unequal_door_ids):
-                door = doc.GetElement(id)
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
-                else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
-                
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                    door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                    door_room_number = "NONE"
-                else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, failed_unequal_door_error_code[index]])
-
-
-        t.Commit()
+if skipped_doors:
+    failed_data = []
+    for door in skipped_doors:
+        if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+            door_mark = "NONE"
+        else:
+            door_mark = door.LookupParameter("Mark").AsString().upper()
         
-        # Display all list of failed doors, including unequal doors
-        if passed_data:
-            output.print_md("##✅ {} Completed. Instances Have Been Updated 😃" .format(__title__)) # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("✔️ Some issues have been resolved. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=passed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "SUCCESS CODE"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
-            output.print_md("***✅ SUCCESS CODE REFERENCE***")  # Print a Line
-            output.print_md("---") # Markdown Line Break
-            output.print_md("**CODE A PASS**  - Leaf width updated to {}." .format(str(min_single_leaf)))
-            output.print_md("**CODE B PASS**  - Leaf width updated to {}." .format(str(max_single_leaf)))
-            output.print_md("**CODE C PASS**  - Clear Height updated to {}." .format(str(min_height)))
-            output.print_md("---") # Markdown Line Break
+        if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+            door_room_name = "NONE"
+        else:
+            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
+        if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+            door_room_number = "NONE"
+        else:
+            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-        if failed_data:
-            output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
-            output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
-            output.print_md("---") # Markdown Line Break
-            output.print_md("**CODE A FAIL**  - Each Leaf Width should be larger than or equal to {}." .format(str(min_single_leaf)))
-            output.print_md("**CODE B FAIL**  - Each Leaf Width should be smaller than or equal to {}." .format(str(max_single_leaf)))
-            output.print_md("**CODE C FAIL**  - Clear Height should be smaller than or equal to {}." .format(str(min_height)))
-            output.print_md("**CODE D FAIL**  - The Main Leaf Width should be larger than or equal to {}." .format(str(min_unq_main_leaf)))
-            output.print_md("**CODE E FAIL**  - The Main Leaf Width should be smaller than or equal to {}." .format(str(max_unq_main_leaf)))
-            output.print_md("**CODE F FAIL**  - The Side Leaf Width should be larger than or equal to {}." .format(str(min_unq_side_leaf)))
-            output.print_md("**CODE G FAIL**  - The Side Leaf Width should be smaller than or equal to {}." .format(str(max_unq_side_leaf)))
-            output.print_md("---") # Markdown Line Break
-        
-        if skipped_doors:
-            failed_data = []
-            for door in skipped_doors:
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
-                else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
-                
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                    door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+        failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
 
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                    door_room_number = "NONE"
-                else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+    output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
 
-                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
-
-            output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
-            output.print_md("---") # Markdown Line Break
-            output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
-            print("\n\n")
-            output.print_md("---") # Markdown Line Break
-
-    if not user_action:
-        script.exit()
 
 if not failed_data and not skipped_doors:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
