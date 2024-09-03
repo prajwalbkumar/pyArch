@@ -329,13 +329,13 @@ for stair in stairs_collector:
         result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
         if not result: 
             continue
-        proximity = (result.Proximity + 1 ) * 304.
+        proximity = (result.Proximity + 1 ) * 304
         if proximity < clearance:
             failed_counter += 1
-            # # Visualize Rays
-            # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
-            # sketch_plane = SketchPlane.Create(doc, plane)
-            # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
+            # Visualize Rays
+            plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
+            sketch_plane = SketchPlane.Create(doc, plane)
+            model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
     
 
     # TODO : FIRE UP THE VISUALIZATION SEQUENCE
