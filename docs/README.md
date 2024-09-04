@@ -19,7 +19,7 @@ The **pyArch Tools** suite is designed to streamline and automate various tasks 
 
 ### Genesis of pyArch Tools
 
-The pyArch Tools suite was developed in-house at DAR Pune, within the Architecture Department, with a focus on enhancing productivity and ensuring precision in the office workflows. Our mission is to automate the mundane and allow you to focus on what truly matters—designing and delivering exceptional projects.
+The pyArch Tools suite was developed in-house at DAR Pune and DAR Bengaluru, within the Architecture Department, with a focus on enhancing productivity and ensuring precision in the office workflows. Our mission is to automate the mundane and allow you to focus on what truly matters—designing and delivering exceptional projects.
 
 #### **Teams:**
 
