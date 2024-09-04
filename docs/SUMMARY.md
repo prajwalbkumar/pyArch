@@ -1,3 +1,3 @@
 # Table of contents
 
-* [Testing Github Integration](README.md)
+* [Welcome to pyArch Tools Documentation](README.md)
