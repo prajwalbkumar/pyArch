@@ -175,7 +175,7 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
                 opposite_ray_direction = ray_direction_sorted[0].Negate()
                 for i in range(1,len(rays_sorted)):
                     if ray_direction_sorted[i].X == opposite_ray_direction.X and ray_direction_sorted[i].Y == opposite_ray_direction.Y and ray_direction_sorted[i].Z == opposite_ray_direction.Z:
-                        if (door_proximities_sorted[i] - (updated_rough_width / 2)) - abs(nib_calculation) >= mimimum_nib_dimension:
+                        if (door_proximities_sorted[i] - (updated_rough_width / 2)) - move_distance >= mimimum_nib_dimension:
                             # Do the shifting and stop the loop
                             mid_point = rays_sorted[i].GetEndPoint(0)
                             offset_point = mid_point + XYZ(opposite_ray_direction.X * move_distance, opposite_ray_direction.Y * move_distance, direction.Z)
