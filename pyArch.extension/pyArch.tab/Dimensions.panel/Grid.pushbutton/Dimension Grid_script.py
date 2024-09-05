@@ -58,13 +58,6 @@ t = Transaction(doc, "Allign Grids")
 t.Start()
 
 all_directions = []
-for grid in grids_collector:
-    curves = grid.GetCurvesInView(DatumExtentType.ViewSpecific, view)
-    for curve in curves:
-        grids_view_curve = curve
-
-    all_directions.append(grids_view_curve.
-
 
 # Convert all Grids to ViewSpecific Grids
 for grid in grids_collector:
@@ -96,24 +89,28 @@ for grid in grids_collector:
 
         exisiting_point = XYZ(exisiting_point.X, exisiting_point.Y, 0)
 
-        for point in projected_points:
-            if (exisiting_point - point).Normalize().IsAlmostEqualTo(direction) or (exisiting_point - point).Normalize().IsAlmostEqualTo(direction.Negate()):
-                possible_points.append(point)
+        try:
+            for point in projected_points:
+                if (exisiting_point - point).Normalize().IsAlmostEqualTo(direction) or (exisiting_point - point).Normalize().IsAlmostEqualTo(direction.Negate()):
+                    possible_points.append(point)
 
-        if start_point:
-            if start_point.IsAlmostEqualTo(possible_points[0]):
+            if start_point:
+                if start_point.IsAlmostEqualTo(possible_points[0]):
+                        new_point = possible_points[1]
+                else:
+                    new_point = possible_points[0]
+
+            else:
+                if point.DistanceTo(possible_points[0]) > point.DistanceTo(possible_points[1]):
+                    new_point = possible_points[0]
+                    
+                else:
                     new_point = possible_points[1]
-            else:
-                new_point = possible_points[0]
+        
+            return new_point
 
-        else:
-            if point.DistanceTo(possible_points[0]) > point.DistanceTo(possible_points[1]):
-                new_point = possible_points[0]
-                
-            else:
-                new_point = possible_points[1]
-    
-        return new_point
+        except:
+            return exisiting_point
     
     
     new_start_point = new_point(start_point, direction, bbox_curves)
@@ -121,7 +118,15 @@ for grid in grids_collector:
 
     new_start_point = XYZ(new_start_point.X, new_start_point.Y, start_point.Z)
     new_end_point = XYZ(new_end_point.X, new_end_point.Y, end_point.Z)
+
     new_grid_line = Line.CreateBound(new_start_point, new_end_point)
+
+    if not new_start_point.X == corner2.X:
+        new_grid_line = new_grid_line.CreateReversed()
+    
+    if not new_start_point.Y == corner3.Y:
+        new_grid_line = new_grid_line.CreateReversed()
+
 
     grid.SetCurveInView(DatumExtentType.ViewSpecific, view, new_grid_line)
 
