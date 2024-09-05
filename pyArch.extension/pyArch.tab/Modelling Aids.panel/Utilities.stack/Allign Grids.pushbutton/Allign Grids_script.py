@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Dimension Grid'''
-__title__ = "Dimension Grid"
+'''Allign Grids'''
+__title__ = "Allign Grids"
 __author__ = "prajwalbkumar"
 
 
@@ -121,14 +121,17 @@ for grid in grids_collector:
 
     new_grid_line = Line.CreateBound(new_start_point, new_end_point)
 
-    if not new_start_point.X == corner2.X:
+    if not int(new_start_point.X) == int(corner2.X):
         new_grid_line = new_grid_line.CreateReversed()
     
-    if not new_start_point.Y == corner3.Y:
+    if not int(new_start_point.Y) == int(corner3.Y):
         new_grid_line = new_grid_line.CreateReversed()
 
 
     grid.SetCurveInView(DatumExtentType.ViewSpecific, view, new_grid_line)
+    grid.HideBubbleInView(DatumEnds.End0, view)
+    # grid.HideBubbleInView(DatumEnds.End1, view)
+    grid.ShowBubbleInView(DatumEnds.End1, view)
 
     # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, new_start_point)
     # sketch_plane = SketchPlane.Create(doc, plane)
