@@ -111,7 +111,7 @@ for grid in grids_collector:
 
         except:
             return exisiting_point
-    
+       
     
     new_start_point = new_point(start_point, direction, bbox_curves)
     new_end_point = new_point(end_point, direction, bbox_curves, new_start_point)
