@@ -18,6 +18,58 @@ rvt_year = int(app.VersionNumber)
 output = script.get_output()
 view = doc.ActiveView
 
+def get_orientation(grid):
+    start = grid.Curve.GetEndPoint(0)
+    end = grid.Curve.GetEndPoint(1)
+    
+    dx = abs(start.X - end.X)
+    dy = abs(start.Y - end.Y)
+  
+    if dy < 0.001:  # More horizontal
+        return "HORIZONTAL"
+    elif dx < 0.001:  # More vertical
+        return "VERTICAL"
+    else:  
+        return "DIAGONAL"
+
+
+def new_point(view_code, exisiting_point, direction, bbox_curves, start_point = None):
+
+    projected_points = []
+    for curve in bbox_curves:
+        project = curve.Project(exisiting_point).XYZPoint
+        if view_code == 1:
+            projected_points.append(XYZ(project.X, project.Y, 0))
+        else:
+            projected_points.append(project)
+
+    possible_points = []
+
+    exisiting_point = XYZ(exisiting_point.X, exisiting_point.Y, 0)
+
+    try:
+        for point in projected_points:
+            if (exisiting_point - point).Normalize().IsAlmostEqualTo(direction) or (exisiting_point - point).Normalize().IsAlmostEqualTo(direction.Negate()):
+                possible_points.append(point)
+
+        if start_point:
+            if start_point.IsAlmostEqualTo(possible_points[0]):
+                    new_point = possible_points[1]
+            else:
+                new_point = possible_points[0]
+
+        else:
+            if point.DistanceTo(possible_points[0]) > point.DistanceTo(possible_points[1]):
+                new_point = possible_points[0]
+                
+            else:
+                new_point = possible_points[1]
+    
+        return new_point
+
+    except:
+        return exisiting_point
+       
 
 # MAIN
 grids_collector = FilteredElementCollector(doc, view.Id).OfCategory(BuiltInCategory.OST_Grids).WhereElementIsNotElementType().ToElements()
@@ -57,84 +109,101 @@ bbox_curves = [line1, line2, line3, line4]
 t = Transaction(doc, "Allign Grids")
 t.Start()
 
-all_directions = []
+floor_plan_views = ["FloorPlan", "CeilingPlan", "EngineeringPlan", "AreaPlan"]
+front_views = ["Elevation", "Section"]
 
-# Convert all Grids to ViewSpecific Grids
-for grid in grids_collector:
-    grid.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
-    grid.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
+if str(view.ViewType) in floor_plan_views:
+    view_code = 1
+    all_directions = []
+    diagonal_grids = []
+    diagonal_directions = []
 
-    # Get the curves of the grids
-    curves = grid.GetCurvesInView(DatumExtentType.ViewSpecific, view)
-    for curve in curves:
-        grids_view_curve = curve
-        # point = curve.GetEndPoint(0)
-        # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
-        # sketch_plane = SketchPlane.Create(doc, plane)
-        # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, curve.GetEndPoint(1)), sketch_plane)
-    
-    start_point = grids_view_curve.GetEndPoint(0)
-    end_point = grids_view_curve.GetEndPoint(1)
-    direction = (end_point - start_point).Normalize()
+    # Convert all Grids to ViewSpecific Grids
+    for grid in grids_collector:
 
-    def new_point(exisiting_point, direction, bbox_curves, start_point = None):
+        if not grid.IsCurved:
+            if get_orientation(grid) == "DIAGONAL":
+                curves = grid.GetCurvesInView(DatumExtentType.ViewSpecific, view)
+                for curve in curves:
+                    grids_view_curve = curve
 
-        projected_points = []
-        for curve in bbox_curves:
-            project = curve.Project(exisiting_point).XYZPoint
-            projected_points.append(XYZ(project.X, project.Y, 0))
-
-    
-        possible_points = []
-
-        exisiting_point = XYZ(exisiting_point.X, exisiting_point.Y, 0)
-
-        try:
-            for point in projected_points:
-                if (exisiting_point - point).Normalize().IsAlmostEqualTo(direction) or (exisiting_point - point).Normalize().IsAlmostEqualTo(direction.Negate()):
-                    possible_points.append(point)
-
-            if start_point:
-                if start_point.IsAlmostEqualTo(possible_points[0]):
-                        new_point = possible_points[1]
-                else:
-                    new_point = possible_points[0]
+                diagonal_directions.append(XYZ(abs(curve.Direction.Normalize().X), abs(curve.Direction.Normalize().Y), abs(curve.Direction.Normalize().Z)))
+                diagonal_grids.append(grid)
+                
 
             else:
-                if point.DistanceTo(possible_points[0]) > point.DistanceTo(possible_points[1]):
-                    new_point = possible_points[0]
-                    
-                else:
-                    new_point = possible_points[1]
+                grid.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
+                grid.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
+
+                # Get the curves of the grids
+                curves = grid.GetCurvesInView(DatumExtentType.ViewSpecific, view)
+                for curve in curves:
+                    grids_view_curve = curve
+                    # point = curve.GetEndPoint(0)
+                    # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, point)
+                    # sketch_plane = SketchPlane.Create(doc, plane)
+                    # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, curve.GetEndPoint(1)), sketch_plane)
+                
+                start_point = grids_view_curve.GetEndPoint(0)
+                end_point = grids_view_curve.GetEndPoint(1)
+                direction = (end_point - start_point).Normalize()
+            
+                new_start_point = new_point(1, start_point, direction, bbox_curves)
+                new_end_point = new_point(1, end_point, direction, bbox_curves, new_start_point)
+
+                new_start_point = XYZ(new_start_point.X, new_start_point.Y, start_point.Z)
+                new_end_point = XYZ(new_end_point.X, new_end_point.Y, end_point.Z)
+
+                new_grid_line = Line.CreateBound(new_start_point, new_end_point)
+
+                if not int(new_start_point.X) == int(corner2.X):
+                    new_grid_line = new_grid_line.CreateReversed()
+                
+                if not int(new_start_point.Y) == int(corner3.Y):
+                    new_grid_line = new_grid_line.CreateReversed()
+
+
+                grid.SetCurveInView(DatumExtentType.ViewSpecific, view, new_grid_line)
+                grid.HideBubbleInView(DatumEnds.End0, view)
+                # grid.HideBubbleInView(DatumEnds.End1, view)
+                grid.ShowBubbleInView(DatumEnds.End1, view)
+
+                # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, new_start_point)
+                # sketch_plane = SketchPlane.Create(doc, plane)
+                # model_line = doc.Create.NewModelCurve(new_grid_line, sketch_plane)
+
+    # if diagonal_grids:
+    #     print(len(diagonal_grids))
+    #     print(len(diagonal_directions))
+    
+    #     used_indices = set()  # To keep track of already processed indices
         
-            return new_point
+    #     for index, grid in enumerate(diagonal_grids):
+    #         if index in used_indices:
+    #             continue
+            
+    #         grid_family = [grid]
+    #         used_indices.add(index)
+            
+    #         # Use a list to store indices to be removed to avoid modifying the list during iteration
+    #         indices_to_remove = []
+            
+    #         for i in range(index + 1, len(diagonal_directions)):
+    #             print(diagonal_directions[index])
+    #             print(diagonal_directions[i])
+    #             if diagonal_directions[index] == diagonal_directions[i]:
+    #                 grid_family.append(diagonal_grids[i])
+    #                 indices_to_remove.append(i)
+    #                 used_indices.add(i)
+            
+    #         # Remove indices from the lists after iteration
+    #         for i in sorted(indices_to_remove, reverse=True):
+    #             diagonal_grids.pop(i)
+    #             diagonal_directions.pop(i)
+            
+    #         print("Grid Family")
+    #         for family in grid_family:
+    #             print(family.Name)
+    #         print("\n\n")
 
-        except:
-            return exisiting_point
-       
-    
-    new_start_point = new_point(start_point, direction, bbox_curves)
-    new_end_point = new_point(end_point, direction, bbox_curves, new_start_point)
-
-    new_start_point = XYZ(new_start_point.X, new_start_point.Y, start_point.Z)
-    new_end_point = XYZ(new_end_point.X, new_end_point.Y, end_point.Z)
-
-    new_grid_line = Line.CreateBound(new_start_point, new_end_point)
-
-    if not int(new_start_point.X) == int(corner2.X):
-        new_grid_line = new_grid_line.CreateReversed()
-    
-    if not int(new_start_point.Y) == int(corner3.Y):
-        new_grid_line = new_grid_line.CreateReversed()
-
-
-    grid.SetCurveInView(DatumExtentType.ViewSpecific, view, new_grid_line)
-    grid.HideBubbleInView(DatumEnds.End0, view)
-    # grid.HideBubbleInView(DatumEnds.End1, view)
-    grid.ShowBubbleInView(DatumEnds.End1, view)
-
-    # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisZ, new_start_point)
-    # sketch_plane = SketchPlane.Create(doc, plane)
-    # model_line = doc.Create.NewModelCurve(new_grid_line, sketch_plane)
-    
 t.Commit()
