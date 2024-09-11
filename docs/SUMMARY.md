@@ -84,3 +84,8 @@
 * [AI-AG iLOD](neom-parameters/ai-ag-ilod.md)
 * [COBie Parameters](neom-parameters/cobie-parameters.md)
 * [NEOM Parameters](neom-parameters/neom-parameters.md)
+
+## Admin
+
+* [Guideline - Release Versioning](admin/guideline-release-versioning.md)
+* [Guideline - Bundle Metadata](admin/guideline-bundle-metadata.md)
