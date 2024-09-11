@@ -31,7 +31,7 @@ new_document.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
 
 # Prompt user to select a destination folder
 
-input = forms.alert("Select File Location", title = "Select Folder", warn_icon=True, options= ["Browse Folder Location"])
+input = forms.alert("Select Location to Save File", title = "Select Folder", warn_icon=True, options= ["Browse Folder Location"])
 
 if input:
     save_folder = forms.pick_folder(title="Select Destination Folder")
