@@ -4,8 +4,7 @@ description: A general template to populate the Metadata for all tools in the py
 
 # Guideline - Bundle Metadata
 
-```yaml
-# General Guideline
+<pre class="language-yaml"><code class="lang-yaml"># General Guideline
 # Leave 2 line spaces after every section
 # Leave 1 Line Space after every line to display items in a new line
 
@@ -26,6 +25,7 @@ tooltip:
     
     Description:
 
+
     This is the placeholder for a .pushbutton
     You can use it to start your pyRevit Add-In
 
@@ -34,20 +34,24 @@ tooltip:
     
     How-To:
 
+
     1. [Hold ALT + CLICK] on the button to open its source folder.
     You will be able to override this placeholder.
 
     2. Automate Your Boring Work ;)
 
-    ________________________________________________________________
-    
+<strong>    ________________________________________________________________
+</strong>    
     
     Last Updates:
+    
+    
     - [DD.MM.YYYY] v1.0.0 First Update
 
     - [DD.MM.YYYY] v0.1.0 Beta Version - [Describe Changes]
 
     - [DD.MM.YYYY] v0.x.x Early Development
+    
     ________________________________________________________________
 
 # highlight: new
@@ -60,7 +64,7 @@ author: Full Name
 # authors:
 #   - John Doe
 #   - Jane Doe
-```
+</code></pre>
 
 ### Useful Links
 
