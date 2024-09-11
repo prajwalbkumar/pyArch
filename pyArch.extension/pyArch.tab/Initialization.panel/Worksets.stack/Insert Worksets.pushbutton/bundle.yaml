@@ -21,6 +21,8 @@ tooltip:
 
     Adds new worksets one by one.
 
+    Needs the Model to be a Workshared Model.
+
     ________________________________________________________________
     
     

@@ -21,6 +21,8 @@ tooltip:
 
     Assigns elements to their correct worksets.
 
+    Needs the Model to be a Workshared Model.
+
     ________________________________________________________________
     
     
