@@ -226,130 +226,141 @@ t = Transaction(doc, "Test")
 t.Start()
 
 failed_data = []
+skipped_data = []
 for stair in stairs_collector:
-    failed_counter = 0
-    stair_tread_count = 0
-    stair_geometry = []
-    run_faces = []
-    stair_run_ids = stair.GetStairsRuns()
+    try:
+        failed_counter = 0
+        stair_tread_count = 0
+        stair_geometry = []
+        run_faces = []
+        stair_run_ids = stair.GetStairsRuns()
 
-    # Calculate Upper Faces for Run
-    run_index_upper_faces = []
-    for run_id in stair_run_ids:
-        run = doc.GetElement(run_id)
-        stair_tread_count += run.LookupParameter("Actual Number of Treads").AsInteger()
-        stair_geometry.append(run.get_Geometry(options))
-        run_index_upper_faces.append(get_upper_faces(stair, stair_geometry))
+        # Calculate Upper Faces for Run
+        run_index_upper_faces = []
+        for run_id in stair_run_ids:
+            run = doc.GetElement(run_id)
+            stair_tread_count += run.LookupParameter("Actual Number of Treads").AsInteger()
+            stair_geometry.append(run.get_Geometry(options))
+            run_index_upper_faces.append(get_upper_faces(stair, stair_geometry))
 
-# TODO: Research why the code block above gives duplicate top faces when returning the faces for the second run
+    # TODO: Research why the code block above gives duplicate top faces when returning the faces for the second run
 
-    all_faces = []
-    for run in run_index_upper_faces:
-        for face in run:
-            all_faces.append(face)
+        all_faces = []
+        for run in run_index_upper_faces:
+            for face in run:
+                all_faces.append(face)
 
-    all_centroids_z = []
-    for face in all_faces:
-        all_centroids_z.append(int(get_face_centroid(face).Z * 304.8))
+        all_centroids_z = []
+        for face in all_faces:
+            all_centroids_z.append(int(get_face_centroid(face).Z * 304.8))
 
-    # Remove Duplicate Faces
-    run_upper_faces = []
-    seen = set()  # This will contain only unique occurrences
+        # Remove Duplicate Faces
+        run_upper_faces = []
+        seen = set()  # This will contain only unique occurrences
 
-    for i, ele in enumerate(all_centroids_z):
-        if ele not in seen:  # This checks if the item is not already in the seen list
-            run_upper_faces.append(i)
-        seen.add(ele)  # Ensure the element is added after processing
-    
-    run_unique_upper_faces = []
-    for index in run_upper_faces:
-        run_unique_upper_faces.append(all_faces[index])
+        for i, ele in enumerate(all_centroids_z):
+            if ele not in seen:  # This checks if the item is not already in the seen list
+                run_upper_faces.append(i)
+            seen.add(ele)  # Ensure the element is added after processing
         
-    face_areas = []
-    for face in run_unique_upper_faces:
-        face_areas.append(face.Area)
-
-    # Create a list of (index, area) pairs
-    indexed_areas = []
-    for index, area in enumerate(face_areas):
-        indexed_areas.append((index, area))
-
-    # Sort the list based on the area values
-    sorted_indexed_areas = sorted(indexed_areas, key=lambda x: x[1])
-
-    # Extract the sorted indices
-    sorted_indices = []
-    for item in sorted_indexed_areas:
-        sorted_indices.append(item[0])
-
-    # The sorted_indices list now contains the indices in the order of the sorted areas
-    sorted_faces = []
-    for index in sorted_indices:
-        sorted_faces.append(run_unique_upper_faces[index])
-
-    sorted_faces.reverse()
-    for index in range(stair_tread_count):
-        run_faces.append(sorted_faces[index])
-
-    # Extract Landing Faces
-    stair_geometry = []
-    stair_landing_ids = stair.GetStairsLandings()
-    landing_faces = []
-    for landing_id in stair_landing_ids:
-        landing = doc.GetElement(landing_id)
-        stair_geometry.append(landing.get_Geometry(options))
-        landing_faces = get_upper_faces(stair, stair_geometry)
-
+        run_unique_upper_faces = []
+        for index in run_upper_faces:
+            run_unique_upper_faces.append(all_faces[index])
             
-    all_points = []
-    if run_faces:
-        for face in run_faces:
-            # Define grid resolution
-            u_divisions = 2
-            v_divisions = 4
-            point_grid = pointgrid(face, u_divisions, v_divisions)
-            for point in point_grid:
-                all_points.append(point)
+        face_areas = []
+        for face in run_unique_upper_faces:
+            face_areas.append(face.Area)
+
+        # Create a list of (index, area) pairs
+        indexed_areas = []
+        for index, area in enumerate(face_areas):
+            indexed_areas.append((index, area))
+
+        # Sort the list based on the area values
+        sorted_indexed_areas = sorted(indexed_areas, key=lambda x: x[1])
+
+        # Extract the sorted indices
+        sorted_indices = []
+        for item in sorted_indexed_areas:
+            sorted_indices.append(item[0])
+
+        # The sorted_indices list now contains the indices in the order of the sorted areas
+        sorted_faces = []
+        for index in sorted_indices:
+            sorted_faces.append(run_unique_upper_faces[index])
+
+        sorted_faces.reverse()
+        for index in range(stair_tread_count):
+            run_faces.append(sorted_faces[index])
+
+        # Extract Landing Faces
+        stair_geometry = []
+        stair_landing_ids = stair.GetStairsLandings()
+        landing_faces = []
+        for landing_id in stair_landing_ids:
+            landing = doc.GetElement(landing_id)
+            stair_geometry.append(landing.get_Geometry(options))
+            landing_faces = get_upper_faces(stair, stair_geometry)
+
+                
+        all_points = []
+        if run_faces:
+            for face in run_faces:
+                # Define grid resolution
+                u_divisions = 2
+                v_divisions = 4
+                point_grid = pointgrid(face, u_divisions, v_divisions)
+                for point in point_grid:
+                    all_points.append(point)
 
 
-    if landing_faces:
-        for face in landing_faces:
-            # Define grid resolution
-            u_divisions = 9
-            v_divisions = 9
-            point_grid = pointgrid(face, u_divisions, v_divisions)
-            for point in point_grid:
-                all_points.append(point)
-   
-    direction = XYZ(0,0,1)
-    for point in all_points:
-        intersector = ReferenceIntersector(view)
-        intersector.FindReferencesInRevitLinks = True
-        
-        result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
-        if not result: 
-            continue
-        proximity = (result.Proximity + 1 ) * 304
-        if proximity < clearance:
-            failed_counter += 1
-            # Visualize Rays
-            plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
-            sketch_plane = SketchPlane.Create(doc, plane)
-            model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
+        if landing_faces:
+            for face in landing_faces:
+                # Define grid resolution
+                u_divisions = 9
+                v_divisions = 9
+                point_grid = pointgrid(face, u_divisions, v_divisions)
+                for point in point_grid:
+                    all_points.append(point)
     
+        direction = XYZ(0,0,1)
+        for point in all_points:
+            intersector = ReferenceIntersector(view)
+            intersector.FindReferencesInRevitLinks = True
+            
+            result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
+            if not result: 
+                continue
+            proximity = (result.Proximity + 1 ) * 304
+            if proximity < clearance:
+                failed_counter += 1
+                # # Visualize Rays
+                # plane = Plane.CreateByNormalAndOrigin(XYZ.BasisX, point)
+                # sketch_plane = SketchPlane.Create(doc, plane)
+                # model_line = doc.Create.NewModelCurve(Line.CreateBound(point, XYZ(point.X,point.Y,(point.Z + (result.Proximity + 1 )))), sketch_plane)
+        
 
 
 
-    if failed_counter:
-        failed_stair_data = [
-            output.linkify(stair.Id),
-            stair.LookupParameter("Base Level").AsValueString(),
-            stair.LookupParameter("Top Level").AsValueString(),
-            stair.LookupParameter("Actual Riser Height").AsValueString(),
-            stair.LookupParameter("Actual Number of Risers").AsValueString(),
-            "OVERHEAD NOT CLEAR"
-        ]
-        failed_data.append(failed_stair_data)
+        if failed_counter:
+            failed_stair_data = [
+                output.linkify(stair.Id),
+                stair.LookupParameter("Base Level").AsValueString(),
+                stair.LookupParameter("Top Level").AsValueString(),
+                stair.LookupParameter("Actual Riser Height").AsValueString(),
+                stair.LookupParameter("Actual Number of Risers").AsValueString(),
+                "OVERHEAD NOT CLEAR"
+            ]
+            failed_data.append(failed_stair_data)
+    except:
+        skipped_data.append([
+                output.linkify(stair.Id),
+                stair.LookupParameter("Base Level").AsValueString(),
+                stair.LookupParameter("Top Level").AsValueString(),
+                "STAIR SKIPPED"
+            ])
+
+
 
 
 if failed_data:
@@ -366,4 +377,17 @@ else:
     output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
     output.print_md("---")
 
+if skipped_data:
+    output.print_md("##⚠️ {} Completed. Stairs Skipped ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID", "BASE LEVEL", "TOP LEVEL", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**STAIR SKIPPED** - Check the staircase manually")
+    output.print_md("---")
+else:
+    output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
+    output.print_md("---")
 t.Commit()

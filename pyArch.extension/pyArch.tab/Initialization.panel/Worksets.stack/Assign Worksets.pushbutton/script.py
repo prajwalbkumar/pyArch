@@ -336,14 +336,10 @@ def process_architecture(selected_category_names):
                                         if any(keyword in material.Name for keyword in ['Concrete', 'Steel', 'ST']):
                                             move_elements_to_workset([wall], 'AR_ST')
                                             break
-                                        elif 'WA_Ext' in wall.Name:
+                                        elif 'Ext' in wall.Name:
                                             move_elements_to_workset([wall], 'AR_External')
-                                        elif 'WA_Int' in wall.Name:
+                                        elif 'Int' in wall.Name:
                                             move_elements_to_workset([wall], 'AR_Internal')
-                                        elif 'WF_Int' in wall.Name:
-                                            move_elements_to_workset([wall], 'AI_Wall Finishes')
-                                        elif 'BS' in wall.Name:
-                                            move_elements_to_workset([wall], 'AI_Wall Base')
                                         elif 'WS_Ext' in wall.Name:
                                             move_elements_to_workset([wall], 'AR_Skin')
                     if 'CW' in wall.Name:
@@ -553,7 +549,13 @@ def process_interior(selected_category_names):
         if 'Walls' in selected_category_names:
             walls = get_elements(BuiltInCategory.OST_Walls)
             if walls:
-                move_elements_to_workset(walls, 'AI_Internal')
+                for wall in walls:
+                    if 'WF' in wall.Name:
+                        move_elements_to_workset([wall], 'AI_Wall Finishes')
+                    elif 'BS' in wall.Name:
+                        move_elements_to_workset([wall], 'AI_Wall Base')
+                    else:
+                        move_elements_to_workset([wall], 'AI_Internal')
 
         if 'Windows' in selected_category_names:
             windows = get_elements(BuiltInCategory.OST_Windows)

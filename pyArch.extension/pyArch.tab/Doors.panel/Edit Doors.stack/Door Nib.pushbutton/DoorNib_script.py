@@ -160,6 +160,20 @@ if not type == "<type 'View3D'>":
 
     script.exit()
 
+door_collector = []
+selection = ui_doc.Selection.GetElementIds()
+if len(selection) > 0:
+    for id in selection:
+        element = doc.GetElement(id)
+        try:
+            if element.LookupParameter("Category").AsValueString() == "Doors":
+               door_collector.append(element)
+        except:
+            continue
+
+else:
+    door_collector = doors_in_document()
+    
 minimum_door_nib = 100
 
 mimimum_nib_dimension = forms.ask_for_string(
@@ -169,8 +183,6 @@ mimimum_nib_dimension = forms.ask_for_string(
 
 if not mimimum_nib_dimension:
     script.exit()
-
-door_collector = doors_in_document()
 
 doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
