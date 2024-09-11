@@ -1,3 +1,7 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
 title: "DAR Startup"
 
 # context:
@@ -6,36 +10,37 @@ title: "DAR Startup"
 
 tooltip:   
   en_us: >-
-    Version = 1.0
-    Date    = 15.06.2024
+    Version   =   0.1.0
+
+    Date       =   11.09.2024
 
     ________________________________________________________________
     
     
     Description:
 
-    This is the placeholder for a .pushbutton
-    You can use it to start your pyRevit Add-In
 
-    ________________________________________________________________
-    
+    Creates a new workshared document using the DAR template.
+
+    _______________________________________________________________
+
     
     How-To:
 
-    1. [Hold ALT + CLICK] on the button to open its source folder.
-    You will be able to override this placeholder.
 
-    2. Automate Your Boring Work ;)
+    1. Specify the save location for the Revit file on your drive.
+    2. Enter the desired name for the new Revit file.
 
     ________________________________________________________________
     
     
-    Last Updates:
-    - [15.06.2024] v1.0 Change Description
+    Changelog:
 
-    - [10.06.2024] v0.5 Change Description
 
-    - [05.06.2024] v0.1 Change Description 
+    - [13.09.2024] v0.1.0 Initiate Project
+
+    - [16.08.2024] v0.x.x Early Development
+
     ________________________________________________________________
 
 # highlight: new
