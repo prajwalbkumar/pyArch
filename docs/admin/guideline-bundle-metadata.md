@@ -18,6 +18,7 @@ title: "Tool Title"
 tooltip:   
   en_us: >-
     Version = 0.x.x
+    
     Date    = DD.MM.YYYY
 
     ________________________________________________________________
