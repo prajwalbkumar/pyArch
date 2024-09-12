@@ -9,11 +9,35 @@ from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import UIDocument
 from pyrevit import revit, forms, script
 import os
+import xlrd
+import random
 
 script_dir = os.path.dirname(__file__)
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
+
+
+
+
+def get_random_color(pastel_factor = 0.5):
+    return [(int((x+pastel_factor)/(1.0+pastel_factor) * 255)) for x in [random.uniform(0,1.0) for i in [1,2,3]]]
+
+def color_distance(c1,c2):
+    return sum([abs(x[0]-x[1]) for x in zip(c1,c2)])
+
+def generate_new_color(existing_colors,pastel_factor = 0.5):
+    max_distance = None
+    best_color = None
+    for i in range(0,100):
+        color = get_random_color(pastel_factor = pastel_factor)
+        if not existing_colors:
+            return color
+        best_distance = min([color_distance(color,c) for c in existing_colors])
+        if not max_distance or best_distance > max_distance:
+            max_distance = best_distance
+            best_color = color
+    return best_color
 
 
 # MAIN SCRIPT
@@ -45,7 +69,20 @@ external_definition = group.Definitions.get_Item("Room_Type")
 if external_definition is None:
     raise ValueError("Definition 'Room_Type' not found in shared parameter file")
 
-t = Transaction(doc, "Create Shared Parameter")
+# Check if the Room_Type Parameters are filled according to the Excel File. 
+options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
+if options == "Select File":
+    excel_path =  forms.pick_excel_file()
+else:
+    script.exit()
+
+excel_workbook = xlrd.open_workbook(excel_path)
+excel_worksheet = excel_workbook.sheet_by_index(1)
+excel_room_types = []
+for row in range(1, excel_worksheet.nrows):
+    excel_room_types.append(excel_worksheet.cell_value(row,0).upper())
+
+t = Transaction(doc, "Add Room_Type Values")
 t.Start()
 
 # Binding Parameter to the Category
@@ -55,6 +92,51 @@ newIB = app.Create.NewInstanceBinding(category_set)
 binding_map = doc.ParameterBindings
 if not binding_map.Insert(external_definition, newIB, BuiltInParameterGroup.PG_IDENTITY_DATA):
     binding_map.ReInsert(external_definition, newIB, BuiltInParameterGroup.PG_IDENTITY_DATA)
+
+color_schemes = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ColorFillSchema)
+
+exisiting_scheme_names = []
+for scheme in color_schemes:
+    exisiting_scheme_names.append(scheme.Name)
+    
+
+for scheme in color_schemes:
+    if not "Room Type" in exisiting_scheme_names:
+        if scheme.CategoryId == Category.GetCategory(doc, BuiltInCategory.OST_Rooms).Id:
+            color_fill_scheme = scheme
+            room_type_scheme = doc.GetElement(color_fill_scheme.Duplicate("Room Type"))
+            break
+    else:
+        if scheme.Name == "Room Type":
+            room_type_scheme = scheme
+            break
+
+room_type_parameter = FilteredElementCollector(doc).WhereElementIsNotElementType().OfClass(SharedParameterElement)
+
+for parameter in room_type_parameter:
+    if parameter.Name == "Room_Type":
+        room_type_parameter_id = parameter.Id
+        break
+
+color_fill_scheme_entries = []
+colors = []
+for room_type in excel_room_types:
+    entry_color = generate_new_color((colors),pastel_factor = 0.9)
+    colors.append(entry_color)
+    r, g, b, = entry_color
+    color = Color(r, g, b)
+
+    entry = ColorFillSchemeEntry(StorageType.String)
+    entry.SetStringValue(room_type)
+    entry.Color = color
+    color_fill_scheme_entries.append(entry)
+
+
+
+room_type_scheme.ParameterDefinition = room_type_parameter_id
+room_type_scheme.SetEntries(color_fill_scheme_entries)
+
+
 
 t.Commit()
 app.SharedParametersFilename = original_shared_file
