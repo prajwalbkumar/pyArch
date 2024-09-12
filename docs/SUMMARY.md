@@ -30,7 +30,7 @@
 * [Door Detective](doors/door-detective.md)
 * [Fire Rating Checks](doors/fire-rating-checks.md)
 * [STC Rating Check](doors/stc-rating-check.md)
-* [FLS Compliance Validator](doors/fls-compliance-validator.md)
+* [FLS Compliance](doors/fls-compliance.md)
 * [Door Nib](doors/door-nib.md)
 * [Rename Doors](doors/rename-doors.md)
 
