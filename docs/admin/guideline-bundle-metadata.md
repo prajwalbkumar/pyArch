@@ -43,7 +43,7 @@ tooltip:
 <strong>    ________________________________________________________________
 </strong>    
     
-    Chnagelog:
+    Changelog:
     
     
     - [DD.MM.YYYY] v1.0.0 First Update
