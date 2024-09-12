@@ -133,7 +133,7 @@ for test in selected_test:
             output.print_md("---") # Markdown Line Break
             output.print_md("**NO ROOM NUMBER FOUND**         - Room_Number Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
             output.print_md("**MARK & ROOM_NUMBER MISMATCH**  - Room_Number & Mark Value do not Match for the Door. Run the DAR Door Add-In.") # Print a Quote
-            output.print_md("**NO MARK VALUE FOUND**          - Missing Door Marak Value. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**NO MARK VALUE FOUND**          - Missing Door Mark Value. Run the DAR Door Add-In.") # Print a Quote
             
             output.print_md("---") # Markdown Line Break
         else:
@@ -200,7 +200,7 @@ for test in selected_test:
             output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
             output.print_md("---") # Markdown Line Break
             output.print_md("**NO ROOM NAME FOUND**   - Room_Name Parameter Empty in the Door. Run the DAR Door Add-In.") # Print a Quote
-            output.print_md("**NO MARK VALUE FOUND**  - Missing Door Marak Value. Run the DAR Door Add-In.") # Print a Quote
+            output.print_md("**NO MARK VALUE FOUND**  - Missing Door Mark Value. Run the DAR Door Add-In.") # Print a Quote
             output.print_md("---") # Markdown Line Break
         else:
             output.print_md("##✅ {} Completed. No Issues Found 😃" .format(test)) # Markdown Heading 2

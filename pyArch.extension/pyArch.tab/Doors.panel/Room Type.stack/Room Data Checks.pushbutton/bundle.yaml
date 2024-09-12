@@ -1,0 +1,62 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Room Data Checks"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   16.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Checks door parameter values for consistency and accuracy.
+
+    The following factors are checked:
+
+    1. Room_Number: Checks for Room Number - Mark value consistency.
+
+    2. Room_Name: Checks for Room Name - Room Number consistency.
+
+    3. Door Sequencing: Checks for inconsistent sequencing in Mark values.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Run the tool.
+
+    ________________________________________________________________
+    
+    
+    Chnagelog:
+    
+    
+    - [16.09.2024] v0.1.0 Beta Release
+
+    - [24.07.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+# highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/room-data-checks"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe
