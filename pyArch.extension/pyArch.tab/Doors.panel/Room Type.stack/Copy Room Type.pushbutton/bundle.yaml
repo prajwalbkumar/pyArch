@@ -2,7 +2,7 @@
 # Leave 2 line spaces after every section
 # Leave 1 Line Space after every line to display items in a new line
 
-title: "Add Room Type"
+title: "Copy Room Type"
 
 # context:
 #   - Walls
@@ -20,9 +20,10 @@ tooltip:
     Description:
 
 
-    Adds a "Room_Type" parameter to Rooms and Doors, 
+    Copies Room_Type values into doors belonging
     
-    then updates it using the Door Design Database Excel file.
+    to their respective rooms.
+
 
     ________________________________________________________________
     
@@ -30,11 +31,9 @@ tooltip:
     How-To:
 
 
-    1. Update the Door Design Database Excel file.
+    1. Fill the "Room_Number" parameter for all doors using the DAR Door Add-In.
 
-    2. Select the file when prompted.
-    
-    3. Assign the Room_Type value from the dropdown in Room Properties.
+    2. Run the tool and select the Door Design Database when prompted.
 
     ________________________________________________________________
     
@@ -42,18 +41,18 @@ tooltip:
     Chnagelog:
     
     
-    - [16.09.2024] v0.1.0 Adds Room Type Values
+    - [16.09.2024] v0.1.0 Copy Value to Doors
 
     - [29.07.2024] v0.x.x Early Development
     
     ________________________________________________________________
 
 # highlight: new
-highlight: updated
+# highlight: updated
 
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/add-room-type-parameter"
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/copy-room-type-data"
 
-author: Prajwal B Kumar
+author: Full Name
 
 # authors:
 #   - John Doe
