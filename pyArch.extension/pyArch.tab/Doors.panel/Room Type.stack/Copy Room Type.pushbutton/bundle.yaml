@@ -1,0 +1,59 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Copy Room Type"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   20.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Copies Room_Type values into doors belonging
+    
+    to their respective rooms.
+
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Fill the "Room_Number" parameter for all doors using the DAR Door Add-In.
+
+    2. Run the tool and select the Door Design Database when prompted.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [20.09.2024] v0.1.0 Copy Value to Doors
+
+    - [29.07.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+# highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/copy-room-type-data"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

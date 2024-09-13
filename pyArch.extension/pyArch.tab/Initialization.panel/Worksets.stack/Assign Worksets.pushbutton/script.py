@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''Assign elements to workset'''
 
-__title__ = "Assign elements to workset"
+__title__ = "Assign Worksets"
 __author__ = "prakritisrimal"
 
 from pyrevit import forms
