@@ -2,7 +2,7 @@
 # Leave 2 line spaces after every section
 # Leave 1 Line Space after every line to display items in a new line
 
-title: "Add Room Type"
+title: "Fire Rating Check"
 
 # context:
 #   - Walls
@@ -20,9 +20,8 @@ tooltip:
     Description:
 
 
-    Adds a "Room_Type" parameter to Rooms and Doors, 
-    
-    then updates it using the Door Design Database Excel file.
+    Writes fire ratings to doors based on their hosted wall's fire rating.
+
 
     ________________________________________________________________
     
@@ -30,11 +29,9 @@ tooltip:
     How-To:
 
 
-    1. Update the Door Design Database Excel file.
+    1. Ensure all walls have a fire rating. If no rating is needed, set it to 0.
 
-    2. Select the file when prompted.
-    
-    3. Assign the Room_Type value from the dropdown in Room Properties.
+    2. Run the tool.
 
     ________________________________________________________________
     
@@ -42,16 +39,16 @@ tooltip:
     Changelog:
     
     
-    - [16.09.2024] v0.1.0 Adds Room Type Values
+    - [16.09.2024] v0.1.0 Updates Door Ratings
 
-    - [29.07.2024] v0.x.x Early Development
+    - [26.07.2024] v0.x.x Early Development
     
     ________________________________________________________________
 
 # highlight: new
-highlight: updated
+# highlight: updated
 
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/add-room-type-parameter"
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/fire-rating-checks"
 
 author: Prajwal B Kumar
 

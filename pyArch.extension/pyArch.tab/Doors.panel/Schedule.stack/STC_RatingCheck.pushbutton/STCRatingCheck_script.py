@@ -93,14 +93,14 @@ if not counter == door_count:
         for door in failed_doors:
             wall = door.Host
             wall_stc_param = wall.LookupParameter("STC_Rating").AsString()
-            door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param) - 20)))
+            door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param) - 15)))
         t.Commit()
         success_message = "STC Rating of " + str(len(failed_doors)) + " doors have been filled"
         success = forms.alert(success_message, title="Missing Parameters Filled", warn_icon=False, options=["Continue with Final Check"])
     else:
         script.exit()
 
-# Check if the Door STC Rating == -20Db of Wall STC Rating
+# Check if the Door STC Rating == -15Db of Wall STC Rating
 failed_counter = 0
 failed_doors = []
 report_message = []
@@ -113,14 +113,14 @@ for door in door_collector:
         # Check if the door_stc_param last digit is not a character. if yes, then strip off the last character
         if not door_stc_param[-1].isdigit():
             door_stc_param = door_stc_param[:-1]
-        if not int(door_stc_param) == int(wall_stc_param) - 20:
+        if not int(door_stc_param) == int(wall_stc_param) - 15:
             report_message.append("Door with Element ID {} does not meet the Wall - Door Criteria" .format(output.linkify(door.Id))) 
             failed_doors.append(door)
             failed_counter += 1
 
 if failed_counter:
 
-    report = forms.alert("Door STC Parameter should be 20dB less than that of the Wall Rating", title="Door STC Rating Missing", warn_icon=True, 
+    report = forms.alert("Door STC Parameter should be 15dB less than that of the Wall Rating", title="Door STC Rating Missing", warn_icon=True, 
                          options=["Show Report","Auto Correct Values [BETA]"])  
     if report == "Show Report":
         for line in report_message:       
@@ -132,7 +132,7 @@ if failed_counter:
         for door in failed_doors:
             wall = door.Host
             wall_stc_param = wall.LookupParameter("STC_Rating").AsString()
-            door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param) - 20)))
+            door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param) - 15)))
         t.Commit()
         success_message = "STC Rating of " + str(len(failed_doors)) + " doors have been filled"
         success = forms.alert(success_message, title="Missing Parameters Filled", warn_icon=False, options=["OK"])

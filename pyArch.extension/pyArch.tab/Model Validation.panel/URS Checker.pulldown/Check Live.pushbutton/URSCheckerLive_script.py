@@ -6,10 +6,11 @@ __author__ = "prakritisrimal - prajwalbkumar"
 # IMPORTS
 
 from Autodesk.Revit.DB import *
+from Autodesk.Revit.ApplicationServices import *
 from Autodesk.Revit.UI import UIDocument
 from pyrevit import revit, forms, script, output
 import os
-import xlrd
+import math
 
 script_dir = os.path.dirname(__file__)
 ui_doc  = __revit__.ActiveUIDocument
@@ -80,8 +81,49 @@ output.print_md('**Test File Path:** {}'.format(report_metadata['Test File']))
 active_site_location = doc.SiteLocation
 urs_site_location = urs_doc.SiteLocation
 
-failed_data = []
+
+urs_current_location = urs_doc.ActiveProjectLocation
+urs_project_position = urs_current_location.GetProjectPosition(XYZ(0,0,0))
+
+urs_northSouth = urs_project_position.NorthSouth * 304.8
+urs_eastWest = urs_project_position.EastWest * 304.8
+urs_elevation = urs_project_position.Elevation * 304.8
+urs_trueNorth = round(urs_project_position.Angle / (math.pi / 180), 3)
+
+active_current_location = doc.ActiveProjectLocation
+active_project_position = active_current_location.GetProjectPosition(XYZ(0,0,0))
+
+active_northSouth = active_project_position.NorthSouth * 304.8
+active_eastWest = active_project_position.EastWest * 304.8
+active_elevation = active_project_position.Elevation * 304.8
+active_trueNorth = round(active_project_position.Angle / (math.pi / 180), 3)
+
+# print(urs_northSouth)
+# print(urs_eastWest)
+# print(urs_elevation)
+# print(urs_trueNorth)
+# print("")
+# print(active_northSouth)
+# print(active_eastWest)
+# print(active_elevation)
+# print(active_trueNorth)
+
+failed_geo_data = []
+failed_project_data = []
 failed_location = False
+
+
+if not active_elevation == urs_elevation:
+    failed_location = True
+
+elif not active_trueNorth == urs_trueNorth:
+    failed_location = True
+
+elif not active_eastWest == urs_eastWest:
+    failed_location = True
+
+elif not active_northSouth == urs_northSouth:
+    failed_location = True
 
 if not active_site_location.Elevation == urs_site_location.Elevation:
     failed_location = True
@@ -106,27 +148,29 @@ elif not active_site_location.WeatherStationName == urs_site_location.WeatherSta
 
 
 if failed_location:
-    failed_data.append(["Elevation", urs_site_location.Elevation, active_site_location.Elevation])
-    failed_data.append(["Geo Coordinate System", urs_site_location.GeoCoordinateSystemId, active_site_location.GeoCoordinateSystemId])
-    failed_data.append(["Latitude", urs_site_location.Latitude, active_site_location.Latitude])
-    failed_data.append(["ongitude", urs_site_location.Longitude, active_site_location.Longitude])
+    failed_geo_data.append(["Site Elevation", urs_site_location.Elevation, active_site_location.Elevation])
+    failed_geo_data.append(["Geo Coordinate System", urs_site_location.GeoCoordinateSystemId, active_site_location.GeoCoordinateSystemId])
+    failed_geo_data.append(["Latitude", urs_site_location.Latitude, active_site_location.Latitude])
+    failed_geo_data.append(["Longitude", urs_site_location.Longitude, active_site_location.Longitude])
 
-if failed_data:
+    failed_project_data.append(["N/S", urs_northSouth, active_northSouth])
+    failed_project_data.append(["E/W", urs_eastWest, active_eastWest])
+    failed_project_data.append(["Elev", urs_elevation, active_elevation])
+    failed_project_data.append(["Angle to True North", urs_trueNorth, active_trueNorth])
+
+if failed_geo_data:
     output.print_md("##⚠️ URS LOCATION - Checks Completed. Issues Found ☹️") # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
     output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=failed_data, columns=["SITE DATUM", "URS DATUM VALUES", "DOCUMENT DATUM VALUES"]) # Print a Table
+    output.print_table(table_data=failed_geo_data, columns=["GEO LOCATION DATA", "URS DATUM VALUES", "DOCUMENT DATUM VALUES"]) # Print a Table
     print("\n\n")
+    output.print_table(table_data=failed_project_data, columns=["BASE POINT DATA", "URS DATUM VALUES", "DOCUMENT DATUM VALUES"]) # Print a Table
     output.print_md("---") # Markdown Line Break
     output.print_md("**LOCATION MISMATCH**  - The document location must match the URS location.") # Print a Quote
     output.print_md("---") # Markdown Line Break
 else:
     output.print_md("##✅ URS LOCATION Checks Completed. No Issues Found 😃") # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
-
-
-
-
 
 
 # Check for Grids
@@ -267,11 +311,3 @@ if failed_data:
 else:
     output.print_md("##✅ URS LEVELS Checks Completed. No Issues Found 😃") # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
-
-
-
-
-
-
-    
-    
