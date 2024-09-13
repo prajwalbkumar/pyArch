@@ -20,7 +20,7 @@ tooltip:
     Description:
 
 
-    Writes STC ratings to doors based on their hosted wall's fire rating.
+    Writes STC ratings to doors based on their hosted wall's STC rating.
 
 
     ________________________________________________________________
