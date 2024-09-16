@@ -1,0 +1,54 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Delete Rooms"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   20.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Deletes all redundant rooms in the project.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Run the Tool.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [20.09.2024] v0.1.0 Deletes redundant Rooms
+
+    - [13.08.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/modelling-aids/delete-rooms"
+
+# author: Prajwal B Kumar
+
+authors:
+  - Prakriti Srimal
+  - Prajwal B Kumar
