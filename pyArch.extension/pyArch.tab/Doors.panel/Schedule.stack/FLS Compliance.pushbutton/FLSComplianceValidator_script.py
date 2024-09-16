@@ -97,6 +97,16 @@ def code_csv_reader():
 
 # Definition to update doors and return failed doors
 def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, min_leaf, max_leaf):
+    view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
+    for view_type in view_family_types:
+        if view_type.ViewFamily == ViewFamily.ThreeDimensional:
+            target_type = view_type
+            break
+    
+    analytical_view = View3D.CreateIsometric(doc, target_type.Id)
+    view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+    view_analytical = doc.GetElement(view_analytical)
+
     mimimum_nib_dimension = int(mimimum_nib_dimension) * 0.00328084
     run_door_ids = []
     run_message = []
@@ -123,7 +133,7 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
         directions.append(wall_direction)
         directions.append(wall_direction.Negate())
 
-        intersector = ReferenceIntersector(view)
+        intersector = ReferenceIntersector(analytical_view)
         intersector.FindReferencesInRevitLinks = True
         for point in calculation_points:    
             for direction in directions:
@@ -142,7 +152,6 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
 
         if not door_proximities:
             continue
-
 
         # Pair the proximity values with their corresponding rays
         paired_proximity_rays = list(zip(door_proximities, rays, ray_direction))
@@ -215,18 +224,20 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
 
     # Pair the proximity values with their corresponding rays
     run_log = list(zip(run_door_ids, run_message))
+    doc.Delete(analytical_view.Id)
+    doc.Delete(view_analytical.Id)
     return run_log
 
 
 # MAIN SCRIPT
-view = doc.ActiveView
-type = str(type(view))
+# view = doc.ActiveView
+# type = str(type(view))
 
-if not type == "<type 'View3D'>":
-    forms.alert("Active View must be a 3D View \n\n"
-                        "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
+# if not type == "<type 'View3D'>":
+#     forms.alert("Active View must be a 3D View \n\n"
+#                         "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
 
-    script.exit()
+#     script.exit()
 
 minimum_door_nib = 100
 
