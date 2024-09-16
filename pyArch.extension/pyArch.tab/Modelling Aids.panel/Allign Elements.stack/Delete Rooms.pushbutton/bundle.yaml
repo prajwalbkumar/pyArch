@@ -2,7 +2,7 @@
 # Leave 2 line spaces after every section
 # Leave 1 Line Space after every line to display items in a new line
 
-title: "FLS Compliance"
+title: "Delete Rooms"
 
 # context:
 #   - Walls
@@ -10,7 +10,7 @@ title: "FLS Compliance"
 
 tooltip:   
   en_us: >-
-    Version   =   0.2.0
+    Version   =   0.1.0
     
     Date       =   20.09.2024
 
@@ -20,8 +20,7 @@ tooltip:
     Description:
 
 
-    Checks door dimensions for compliance with relevant codes and optionally corrects them to appropriate sizes.
-
+    Deletes all redundant rooms in the project.
 
     ________________________________________________________________
     
@@ -29,9 +28,7 @@ tooltip:
     How-To:
 
 
-    1. Select the relevant code.
-
-    2. Click "Auto-Correct" to adjust door height and width to the correct values.
+    1. Run the Tool.
 
     ________________________________________________________________
     
@@ -39,21 +36,19 @@ tooltip:
     Changelog:
     
     
-    - [20.09.2024] v0.2.0 Auto Update Doors
+    - [20.09.2024] v0.1.0 Deletes redundant Rooms
 
-    - [08.08.2024] v0.1.0 Report Generation
-
-    - [22.07.2024] v0.x.x Early Development
+    - [13.08.2024] v0.x.x Early Development
     
     ________________________________________________________________
 
 # highlight: new
 # highlight: updated
 
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/fls-compliance"
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/modelling-aids/delete-rooms"
 
-author: Prajwal B Kumar
+# author: Prajwal B Kumar
 
-# authors:
-#   - John Doe
-#   - Jane Doe
+authors:
+  - Prakriti Srimal
+  - Prajwal B Kumar

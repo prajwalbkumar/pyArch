@@ -110,16 +110,17 @@ def pointgrid(face, u_divisions, v_divisions):
 
 
 
-view = doc.ActiveView
-type = str(type(view))
+# view = doc.ActiveView
+# type = str(type(view))
 
-if not type == "<type 'View3D'>":
-    forms.alert("Active View must be a 3D View \n\n"
-                        "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
+# if not type == "<type 'View3D'>":
+#     forms.alert("Active View must be a 3D View \n\n"
+#                         "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
 
-    script.exit()
+#     script.exit()
 
 # Relevant Codes
+
 code = ["NFPA", "IBC", "SBC", "DCD"]
 
 # Prompt to choose a Code
@@ -218,12 +219,23 @@ if not stairs_collector:
                             "Run the tool after creating a staircase", title = "Script Exiting", warn_icon = True)
     script.exit()
 
-options = Options()
-options.View = doc.ActiveView
-options.IncludeNonVisibleObjects = True
-
-t = Transaction(doc, "Test")
+t = Transaction(doc, "Check Clearance")
 t.Start()
+
+view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
+for view_type in view_family_types:
+    if view_type.ViewFamily == ViewFamily.ThreeDimensional:
+        target_type = view_type
+        break
+
+analytical_view = View3D.CreateIsometric(doc, target_type.Id)
+view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+view_analytical = doc.GetElement(view_analytical)
+
+
+options = Options()
+options.View = view_analytical
+options.IncludeNonVisibleObjects = True
 
 failed_data = []
 skipped_data = []
@@ -325,7 +337,7 @@ for stair in stairs_collector:
     
         direction = XYZ(0,0,1)
         for point in all_points:
-            intersector = ReferenceIntersector(view)
+            intersector = ReferenceIntersector(view_analytical)
             intersector.FindReferencesInRevitLinks = True
             
             result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
@@ -373,9 +385,6 @@ if failed_data:
     output.print_md("---")
     output.print_md("**OVERHEAD NOT CLEAR** - The clearance does not meet the minimum requriement of {}mm\n" .format(clearance))
     output.print_md("---")
-else:
-    output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
-    output.print_md("---")
 
 if skipped_data:
     output.print_md("##⚠️ {} Completed. Stairs Skipped ☹️".format(__title__))
@@ -387,7 +396,7 @@ if skipped_data:
     output.print_md("---")
     output.print_md("**STAIR SKIPPED** - Check the staircase manually")
     output.print_md("---")
-else:
+if not skipped_data and not failed_data:
     output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
     output.print_md("---")
 t.Commit()
