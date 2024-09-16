@@ -20,7 +20,8 @@ tooltip:
     Description:
 
 
-    Writes fire ratings to doors based on their hosted wall's fire rating.
+    Checks for inconsistencies in model datum items like grids, levels, and shared site location against the URS file.
+
 
 
     ________________________________________________________________
@@ -29,9 +30,7 @@ tooltip:
     How-To:
 
 
-    1. Ensure all walls have a fire rating. If no rating is needed, set it to 0.
-
-    2. Run the tool.
+    1. Select the linked URS file when prompted.
 
     ________________________________________________________________
     
@@ -39,19 +38,19 @@ tooltip:
     Changelog:
     
     
-    - [20.09.2024] v0.1.0 Updates Door Ratings
+    - [20.09.2024] v0.1.0 Added Project Base Point Parameters
 
-    - [26.07.2024] v0.x.x Early Development
+    - [02.08.2024] v0.x.x Early Development
     
     ________________________________________________________________
 
 # highlight: new
 highlight: updated
 
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/fire-rating-checks"
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/model-validation/urs-validator"
 
-author: Prajwal B Kumar
+# author: Prajwal B Kumar
 
-# authors:
-#   - John Doe
-#   - Jane Doe
+authors:
+  - Prakriti Srimal
+  - Prajwal B Kumar
