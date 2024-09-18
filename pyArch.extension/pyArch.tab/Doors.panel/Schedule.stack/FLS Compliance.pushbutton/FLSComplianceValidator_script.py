@@ -318,7 +318,7 @@ else:
     max_unq_side_leaf = sorted(list_max_unq_side_leaf)[0]
     max_double_leaf = sorted(list_max_double_leaf)[0]
     
-    min_height = sorted(list_min_height)[0]
+    min_height = sorted(list_min_height)[-1]
 
 door_collector = doors_in_document()
 
