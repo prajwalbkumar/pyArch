@@ -256,32 +256,69 @@ minimum_door_nib = 100
 
 # UI to Select the Code
 user_code = forms.SelectFromList.show(
-    code, title="Select Relevent Code", width=300, height=300, button_name="Select Code", multiselect=False
+    code, title="Select Relevent Code", width=300, height=300, button_name="Select Code", multiselect=True
 )
 
 if not user_code:
     script.exit()
 
-mimimum_nib_dimension = forms.ask_for_string(
-    title="Minimum Door Nib Dimension",
-    prompt="Enter Minimum Door Nib Dimension\n", 
-    default="150")
+if len(user_code) == 1:
+    for code in user_code:
+        # Find the Index Values of the Code Selected from the Main Code List
+        code_row = code.index(code)
 
-# Find the Index Values of the Code Selected from the Main Code List
-code_row = code.index(user_code)
+    # Get the Value of the Rows against the Code Selected
+    min_single_leaf = int(min_single_leaf[code_row])
+    min_unq_main_leaf = int(min_unq_main_leaf[code_row])
+    min_unq_side_leaf = int(min_unq_side_leaf[code_row])
+    min_double_leaf = int(min_double_leaf[code_row])
 
-# Get the Value of the Rows against the Code Selected
-min_single_leaf = int(min_single_leaf[code_row])
-min_unq_main_leaf = int(min_unq_main_leaf[code_row])
-min_unq_side_leaf = int(min_unq_side_leaf[code_row])
-min_double_leaf = int(min_double_leaf[code_row])
+    max_single_leaf = int(max_single_leaf[code_row])
+    max_unq_main_leaf = int(max_unq_main_leaf[code_row])
+    max_unq_side_leaf = int(max_unq_side_leaf[code_row])
+    max_double_leaf = int(max_double_leaf[code_row])
 
-max_single_leaf = int(max_single_leaf[code_row])
-max_unq_main_leaf = int(max_unq_main_leaf[code_row])
-max_unq_side_leaf = int(max_unq_side_leaf[code_row])
-max_double_leaf = int(max_double_leaf[code_row])
+    min_height = int(min_height[code_row])
 
-min_height = int(min_height[code_row])
+else:
+    list_min_single_leaf = []
+    list_min_unq_main_leaf = []
+    list_min_unq_side_leaf = []
+    list_min_double_leaf = []
+
+    list_max_single_leaf = []
+    list_max_unq_main_leaf = []
+    list_max_unq_side_leaf = []
+    list_max_double_leaf = []
+
+    list_min_height = []
+
+    for input_code in user_code:
+        code_row = code.index(input_code)
+        list_min_single_leaf.append(int(min_single_leaf[code_row]))
+        list_min_unq_main_leaf.append(int(min_unq_main_leaf[code_row]))
+        list_min_unq_side_leaf.append(int(min_unq_side_leaf[code_row]))
+        list_min_double_leaf.append(int(min_double_leaf[code_row]))
+
+        list_max_single_leaf.append(int(max_single_leaf[code_row]))
+        list_max_unq_main_leaf.append(int(max_unq_main_leaf[code_row]))
+        list_max_unq_side_leaf.append(int(max_unq_side_leaf[code_row]))
+        list_max_double_leaf.append(int(max_double_leaf[code_row]))
+
+        list_min_height.append(int(min_height[code_row]))
+
+    min_single_leaf = sorted(list_min_single_leaf)[-1]
+    min_unq_main_leaf = sorted(list_min_unq_main_leaf)[-1]
+    min_unq_side_leaf = sorted(list_min_unq_side_leaf)[-1]
+    min_double_leaf = sorted(list_min_double_leaf)[-1]
+
+
+    max_single_leaf = sorted(list_max_single_leaf)[0]
+    max_unq_main_leaf = sorted(list_max_unq_main_leaf)[0]
+    max_unq_side_leaf = sorted(list_max_unq_side_leaf)[0]
+    max_double_leaf = sorted(list_max_double_leaf)[0]
+    
+    min_height = sorted(list_min_height)[-1]
 
 door_collector = doors_in_document()
 
@@ -454,6 +491,10 @@ if failed_data or skipped_doors:
             output.print_md("---") # Markdown Line Break
 
     elif user_action == "Auto - Correct Doors":
+        mimimum_nib_dimension = forms.ask_for_string(
+            title="Minimum Door Nib Dimension",
+            prompt="Enter Minimum Door Nib Dimension\n", 
+            default="150")
 
         failed_data = []
         passed_data = []
