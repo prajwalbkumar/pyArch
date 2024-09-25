@@ -10,9 +10,9 @@ title: "Staircase Compliance"
 
 tooltip:   
   en_us: >-
-    Version   =   0.1.0
+    Version   =   0.2.0
     
-    Date       =   20.09.2024
+    Date       =   24.09.2024
 
     ________________________________________________________________
     
@@ -20,7 +20,7 @@ tooltip:
     Description:
 
 
-    Checks for obstructions on staircase runs and landing headrooms according to relevant codes.
+    Checks for staircase compliance according to relevant codes.
 
     ________________________________________________________________
     
@@ -36,6 +36,8 @@ tooltip:
     Changelog:
     
     
+    - [24.09.2024] v0.2.0 Added compliance checks
+    
     - [20.09.2024] v0.1.0 Checks all Staircase
 
     - [19.08.2024] v0.x.x Early Development
@@ -43,7 +45,7 @@ tooltip:
     ________________________________________________________________
 
 # highlight: new
-# highlight: updated
+highlight: updated
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/analysis/staricase-clearances"
 
