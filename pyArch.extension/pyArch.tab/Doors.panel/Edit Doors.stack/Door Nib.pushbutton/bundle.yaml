@@ -20,8 +20,11 @@ tooltip:
     Description:
 
 
-    Adjusts doors to ensure the correct door-nib (wall to door) dimension. 
-    If any door is below the minimum dimension, the tool updates it. 
+    Adjusts doors to ensure the correct door-nib (wall to door) dimension.
+
+    Door Nibs should always be in the multiples of 50 mm and have minimum dimensions of 150 mm.
+
+    If any door is below the minimum dimension, or not in the multiple of 50 mm the tool updates it. 
     
 
     Optionally, pre-select target doors to only operate on selected doors.
@@ -32,7 +35,7 @@ tooltip:
     How-To:
 
 
-    1. (Optional) Select doors.
+    1. Select target doors
 
     2. Enter the minimum door-nib dimension.
 
@@ -51,7 +54,7 @@ tooltip:
     ________________________________________________________________
 
 # highlight: new
-# highlight: updated
+highlight: updated
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/door-nib"
 
