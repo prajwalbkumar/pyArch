@@ -6,7 +6,8 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
+from Autodesk.Revit.UI import *
+from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
 from pyrevit import revit, forms, script
 import csv 
 import os
@@ -47,7 +48,7 @@ def doors_in_document():
 
 
 # Definition to update doors and return failed doors
-def update_doors(door_ids, mimimum_nib_dimension):
+def update_doors(door_ids, mimimum_nib_dimension, move_code):
     view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
     for view_type in view_family_types:
         if view_type.ViewFamily == ViewFamily.ThreeDimensional:
@@ -151,6 +152,38 @@ def update_doors(door_ids, mimimum_nib_dimension):
                     else:
                         run_log_code = run_log_code + "CODE A FAIL "
                         break
+        
+        else: 
+            if move_code == 0:
+                # For Doors with more nibs
+                target_ray_direction = ray_direction_sorted[0]
+                for i in range(1,len(rays_sorted)):
+                    if ray_direction_sorted[i].X == target_ray_direction.X and ray_direction_sorted[i].Y == target_ray_direction.Y and ray_direction_sorted[i].Z == target_ray_direction.Z:
+                        if (door_proximities_sorted[i] - (rough_width / 2)) - move_distance > mimimum_nib_dimension:
+                            # Do the shifting and stop the loop
+                            mid_point = rays_sorted[i].GetEndPoint(0)
+                            offset_point = mid_point + XYZ(target_ray_direction.X * move_distance, target_ray_direction.Y * move_distance, direction.Z)
+
+                            old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
+                            new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
+
+                            door.Location.Move(new_location - old_location)
+
+                            run_log_code = run_log_code + "CODE A PASS "
+                            break
+
+                        else:
+                            run_log_code = run_log_code + "CODE A FAIL "
+                            break
+
+            # if move_code == 1:
+                # Check how far is the current door nib from the rounded version
+
+                # If it needs to be moved up, move it in the opposite direction. Else in the same one. 
+
+                # Move Distance and Direction should be derived from the above steps.
+
+                # Move the item.
 
         run_door_ids.append(id)
         run_message.append(run_log_code)
@@ -161,20 +194,22 @@ def update_doors(door_ids, mimimum_nib_dimension):
     doc.Delete(view_analytical.Id)
     return run_log
 
-
+# Define a selection filter class for doors
+class DoorSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Doors):
+            return True
+        return False
+    
+    def AllowReference(self, ref, point):
+        return False
+    
 # MAIN SCRIPT
-# view = doc.ActiveView
-# type = str(type(view))
-
-# if not type == "<type 'View3D'>":
-#     forms.alert("Active View must be a 3D View \n\n"
-#                         "Make sure that the 3D View contains all Model Elements", title = "Script Exiting", warn_icon = True)
-
-#     script.exit()
-
 door_collector = []
+
 selection = ui_doc.Selection.GetElementIds()
 if len(selection) > 0:
+    move_code = 0
     for id in selection:
         element = doc.GetElement(id)
         try:
@@ -184,13 +219,39 @@ if len(selection) > 0:
             continue
 
 else:
-    door_collector = doors_in_document()
-    
-minimum_door_nib = 100
+    #Custom selection 
+    selection_options = forms.alert("This tool checks and updates door nibs.",
+                                    title="Door Nib - Select Doors", 
+                                    warn_icon=False, 
+                                    options=["Check All Doors", "Choose Specific Doors"])
+
+    if not selection_options:
+        script.exit()
+
+    elif selection_options == "Check All Doors":
+        move_code = 1
+        door_collector = doors_in_document()
+
+    else:
+        # Prompt user to select doors
+        try:
+            move_code = 2
+            choices = ui_doc.Selection
+            selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
+            
+            for selected_element in selected_elements:
+                door = doc.GetElement(selected_element.ElementId)
+                door_collector.append(door)
+
+        except:
+            script.exit()
+
 
 mimimum_nib_dimension = forms.ask_for_string(
-    title="Minimum Door Nib Dimension",
-    prompt="Enter Minimum Door Nib Dimension\n", 
+    title="Enter the Minimum Door Nib Dimension.",
+    prompt="If the current nib dimension is smaller than this value, it will be\n"
+            "updated to match.\n\n"
+            "Else, will be rounded to the nearest 50mm.\n",
     default="150")
 
 if not mimimum_nib_dimension:
@@ -206,7 +267,7 @@ for door in door_collector:
     error_message = ""
     symbol = door.Symbol
     try:
-        door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error here. Door might not have Door Type Parameter sometimes.
+        door_type = symbol.LookupParameter("Door_Type").AsString()
         if not door_type.upper() in doors_excluded:
             move_door_ids.append(door.Id)
   
@@ -219,7 +280,7 @@ passed_data = []
 t = Transaction(doc, "Update Door Families")
 t.Start()
 if move_door_ids:
-    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
+    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension, move_code)
     run_door_ids, run_message = zip(*doors_run_log)
     for index, id in enumerate(run_door_ids):
         if "FAIL" in run_message[index]:
