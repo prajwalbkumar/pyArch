@@ -370,70 +370,72 @@ if move_door_ids:
 
 t.Commit()
 
-# Check for Doors that are too close to each other
-wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+
 clashing_data = []
 
-door_minimum_clearance = 300
-door_door_clearance = door_minimum_clearance * 0.00328084
-for wall in wall_collector:
-    wall_dependent_elements = wall.GetDependentElements(None)  # Get all dependent elements
+extra_checks = forms.alert("Would you like to check for any Door - Door Nib Clashes in the project?", title= "Door-Door Clash Test", warn_icon=False, options=["YES", "NO"])
 
-    # Create a category filter to filter out door instances
-    door_filter = ElementCategoryFilter(BuiltInCategory.OST_Doors)
+if extra_checks == "YES":
+    # Check for Doors that are too close to each other
+    wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
 
-    # Collect the dependent elements that are doors
-    dependent_doors = []
-    for element_id in wall_dependent_elements:
-        element = doc.GetElement(element_id)
-        if element and door_filter.PassesFilter(element):  # Check if the element is a door
-            dependent_doors.append(element)
-    
-    if not len(dependent_doors) > 1:
-        continue
-    
-    indexed_door = []
-    for door in dependent_doors:
-        host_parameter = door.HostParameter
-        indexed_door.append((door, host_parameter))
 
-    sorted_indexed_door = sorted(indexed_door, key=lambda x: x[1])
 
-    doors = [item[0] for item in indexed_door]           # Extracting doors
-    host_parameters = [item[1] for item in indexed_door] # Extracting host parameters
-    
-    for door in doors:
-        print(output.linkify(door.Id))
+    door_minimum_clearance = 300
+    door_door_clearance = door_minimum_clearance * 0.00328084
+    for wall in wall_collector:
+        wall_dependent_elements = wall.GetDependentElements(None)  # Get all dependent elements
 
-    for i in range(len(doors) - 1):
-        current_door_rough_width = doors[i].Symbol.LookupParameter("Rough Width").AsDouble()
-        next_door_rough_width = doors[i+1].Symbol.LookupParameter("Rough Width").AsDouble()
+        # Create a category filter to filter out door instances
+        door_filter = ElementCategoryFilter(BuiltInCategory.OST_Doors)
+
+        # Collect the dependent elements that are doors
+        dependent_doors = []
+        for element_id in wall_dependent_elements:
+            element = doc.GetElement(element_id)
+            if element and door_filter.PassesFilter(element):  # Check if the element is a door
+                dependent_doors.append(element)
         
-        current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
-        next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
+        if not len(dependent_doors) > 1:
+            continue
+        
+        indexed_door = []
+        for door in dependent_doors:
+            host_parameter = door.HostParameter
+            indexed_door.append((door, host_parameter))
 
-        print(output.linkify(doors[i].Id))
+        sorted_indexed_door = sorted(indexed_door, key=lambda x: x[1])
 
-        if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
-
-            if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
-                door_mark = "NONE"
-            else:
-                door_mark = doors[i].LookupParameter("Mark").AsString().upper()
+        doors = [item[0] for item in indexed_door]           # Extracting doors
+        host_parameters = [item[1] for item in indexed_door] # Extracting host parameters
+        
+        for i in range(len(doors) - 1):
+            current_door_rough_width = doors[i].Symbol.LookupParameter("Rough Width").AsDouble()
+            next_door_rough_width = doors[i+1].Symbol.LookupParameter("Rough Width").AsDouble()
             
-            if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
-                door_room_name = "NONE"
-            else:
-                door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
+            current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
+            next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
 
-            if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
-                door_room_number = "NONE"
-            else:
-                door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
+            print(output.linkify(doors[i].Id))
 
-            clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
+            if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
 
+                if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
+                    door_mark = "NONE"
+                else:
+                    door_mark = doors[i].LookupParameter("Mark").AsString().upper()
+                
+                if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
+                    door_room_name = "NONE"
+                else:
+                    door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
 
+                if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
+                    door_room_number = "NONE"
+                else:
+                    door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
+
+                clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
 
 # Display all list of failed doors, including unequal doors
 if passed_data:
@@ -498,8 +500,6 @@ if skipped_doors:
     output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
     print("\n\n")
     output.print_md("---") # Markdown Line Break
-
-
 
 if not failed_data and not skipped_doors and not clashing_data:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
