@@ -416,7 +416,6 @@ if extra_checks == "YES":
             current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
             next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
 
-            print(output.linkify(doors[i].Id))
 
             if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
 
