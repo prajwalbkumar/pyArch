@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-'''Rename Doors'''
-__title__ = "Rename Doors"
+'''Rename Types'''
+__title__ = "Rename Types"
 __author__ = "prajwalbkumar"
 
 
