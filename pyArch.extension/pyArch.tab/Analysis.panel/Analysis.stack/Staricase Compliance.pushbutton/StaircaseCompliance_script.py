@@ -109,6 +109,7 @@ def pointgrid(face, u_divisions, v_divisions):
 
 # Get all the Stairs in the Document. And Inflate their bounding boxes a over the top.
 stairs_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Stairs).WhereElementIsNotElementType().ToElements()
+
 if not stairs_collector:
     forms.alert("No staircase found in the active document \n\n"
                             "Run the tool after creating a staircase", title = "Script Exiting", warn_icon = True)
@@ -242,6 +243,27 @@ if checks[1] in user_checks: # RISER CHECK
         output.print_md("---")
     
 if checks[2] in user_checks: # HEADROOM CHECK
+
+    # Collect all linked instances
+    linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+    link_name = []
+    
+    for link in linked_instance:
+        link_name.append(link.Name)
+
+    target_instance_names = forms.SelectFromList.show(link_name, title = "Select URS File", width=600, height=600, button_name="Select File", multiselect=True)
+
+    if not target_instance_names:
+        pass
+
+    target_instances = []
+
+    for link in linked_instance:
+        for name in target_instance_names:
+            if name == link.Name:
+                print(link)
+                target_instances.append(link)
+
     t = Transaction(doc, "Clearance Check")
     t.Start()
     view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
