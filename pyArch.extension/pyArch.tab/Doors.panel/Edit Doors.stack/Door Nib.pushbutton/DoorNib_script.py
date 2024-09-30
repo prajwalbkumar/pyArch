@@ -11,6 +11,7 @@ from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
 from pyrevit import revit, forms, script
 import csv 
 import os
+from System.Collections.Generic import List
 
 script_dir = os.path.dirname(__file__)
 ui_doc = __revit__.ActiveUIDocument
@@ -46,9 +47,8 @@ def doors_in_document():
     )
     return doors
 
-
 # Definition to update doors and return failed doors
-def update_doors(door_ids, mimimum_nib_dimension):
+def update_doors(door_ids, mimimum_nib_dimension, target_instances_type):
     base = 50
 
     view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
@@ -58,8 +58,13 @@ def update_doors(door_ids, mimimum_nib_dimension):
             break
     
     analytical_view = View3D.CreateIsometric(doc, target_type.Id)
-    view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
-    view_analytical = doc.GetElement(view_analytical)
+    try:
+        analytical_view.HideElements(target_instances_type)
+    except:
+        pass
+
+    # view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+    # view_analytical = doc.GetElement(view_analytical)
     
     mimimum_nib_dimension = int(mimimum_nib_dimension) * 0.00328084
     run_door_ids = []
@@ -93,7 +98,7 @@ def update_doors(door_ids, mimimum_nib_dimension):
         directions.append(wall_direction)
         directions.append(wall_direction.Negate())
 
-        intersector = ReferenceIntersector(view_analytical)
+        intersector = ReferenceIntersector(analytical_view)
         intersector.FindReferencesInRevitLinks = True
         for point in calculation_points:    
             for direction in directions:
@@ -232,7 +237,6 @@ def update_doors(door_ids, mimimum_nib_dimension):
     # Pair the proximity values with their corresponding rays
     run_log = list(zip(run_door_ids, run_message))
     doc.Delete(analytical_view.Id)
-    doc.Delete(view_analytical.Id)
     return run_log
 
 # Define a selection filter class for doors
@@ -298,6 +302,25 @@ mimimum_nib_dimension = forms.ask_for_string(
 if not mimimum_nib_dimension:
     script.exit()
 
+# Collect all linked instances
+linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
+link_name = []
+
+for link in linked_instance:
+    link_name.append(link.Name)
+
+target_instance_names = forms.SelectFromList.show(link_name, title = "Select Target File", width=600, height=600, button_name="Select File", multiselect=True)
+
+if not target_instance_names:
+    script.exit()
+
+target_instances_type = List[ElementId]()
+
+for link in linked_instance:
+    for name in target_instance_names:
+        if name != link.Name:
+            target_instances_type.Add(link.GetTypeId())    
+
 doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
 skipped_doors = []
@@ -323,7 +346,7 @@ t = Transaction(doc, "Update Door Position")
 t.Start()
 
 if move_door_ids:
-    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
+    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension, target_instances_type)
     run_door_ids, run_message = zip(*doors_run_log)
     for index, id in enumerate(run_door_ids):
         try:
@@ -370,7 +393,6 @@ if move_door_ids:
 
 t.Commit()
 
-
 clashing_data = []
 
 extra_checks = forms.alert("Would you like to check for any Door - Door Nib Clashes in the project?", title= "Door-Door Clash Test", warn_icon=False, options=["YES", "NO"])
@@ -378,8 +400,6 @@ extra_checks = forms.alert("Would you like to check for any Door - Door Nib Clas
 if extra_checks == "YES":
     # Check for Doors that are too close to each other
     wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
-
-
 
     door_minimum_clearance = 300
     door_door_clearance = door_minimum_clearance * 0.00328084
@@ -476,20 +496,29 @@ if clashing_data:
 if skipped_doors:
     failed_data = []
     for door in skipped_doors:
-        if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+        if door.LookupParameter("Mark"):
+            if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                door_mark = "NONE"
+            else:
+                door_mark = door.LookupParameter("Mark").AsString().upper()
+        else:
             door_mark = "NONE"
-        else:
-            door_mark = door.LookupParameter("Mark").AsString().upper()
         
-        if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+        if door.LookupParameter("Room_Name"):
+            if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                door_room_name = "NONE"
+            else:
+                door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+        else:
             door_room_name = "NONE"
-        else:
-            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-        if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-            door_room_number = "NONE"
+        if door.LookupParameter("Room_Number"):
+            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                door_room_number = "NONE"
+            else:
+                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
         else:
-            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+            door_room_number = "NONE"
 
         failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
 
