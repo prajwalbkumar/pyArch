@@ -6,10 +6,8 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import *
-from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
-from pyrevit import revit, forms, script
-import csv 
+from Autodesk.Revit.UI.Selection import ObjectType, ISelectionFilter
+from pyrevit import forms, script
 import os
 from System.Collections.Generic import List
 
