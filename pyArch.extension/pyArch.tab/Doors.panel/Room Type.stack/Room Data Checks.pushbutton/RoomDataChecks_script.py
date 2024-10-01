@@ -10,11 +10,7 @@ from Autodesk.Revit.DB import *
 from pyrevit import forms, script, output
 import os
 
-script_dir = os.path.dirname(__file__)
-ui_doc  = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
-rvt_year = int(app.VersionNumber)
 output = script.get_output()
 
 # FUNCTIONS
