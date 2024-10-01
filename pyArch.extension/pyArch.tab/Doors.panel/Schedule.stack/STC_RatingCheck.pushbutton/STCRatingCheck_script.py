@@ -6,7 +6,6 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
 from pyrevit import revit, forms, script
 
 ui_doc = __revit__.ActiveUIDocument
@@ -18,11 +17,21 @@ output = script.get_output()
 
 # Get all the Doors
 door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
-door_count = len(door_collector)
+
+if not door_collector:
+    forms.alert("No doors found in the active document\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+try:
+    if door_collector[0].LookupParameter("STC_Rating").AsString():
+        pass
+except:
+    forms.alert("No STC_Rating Parameter Found in Document\n\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
+    script.exit()
 
 # Check if all Doors have STC Rating. If Not:
-counter = 0
-report_message = []
 failed_doors = []
 
 for door in door_collector:
@@ -52,7 +61,12 @@ if failed_doors:
                 door_mark = "NONE"
             else:
                 door_mark = door.LookupParameter("Mark").AsString().upper()
-            
+
+            if door.LookupParameter("Level"):
+                door_level = door.LookupParameter("Level").AsValueString().upper()
+            else:
+                door_level = "NONE"
+                
             if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
                 door_room_name = "NONE"
             else:
@@ -63,12 +77,7 @@ if failed_doors:
             else:
                 door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                door_room_number = "NONE"
-            else:
-                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-            failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("STC_Rating").AsString(), str(int(int(hosted_wall_rating.AsString()) - 15))])
+            failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("STC_Rating").AsString(), str(int(int(hosted_wall_rating.AsString()) - 15))])
 
     if report == "Show Report":
         output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
@@ -82,9 +91,12 @@ if failed_doors:
         t = Transaction(doc, "Filling Door STC Ratings")
         t.Start()
         for door in failed_doors:
-            wall = door.Host
-            wall_stc_param = wall.LookupParameter("STC_Rating").AsString()
-            door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param)- 15)))
+            try:
+                wall = door.Host
+                wall_stc_param = wall.LookupParameter("STC_Rating").AsString()
+                door.LookupParameter("STC_Rating").Set(str(int(int(wall_stc_param)- 15)))
+            except:
+                pass
         t.Commit()
         
         success_message = "STC Rating of " + str(len(failed_doors)) + " doors have been filled"
