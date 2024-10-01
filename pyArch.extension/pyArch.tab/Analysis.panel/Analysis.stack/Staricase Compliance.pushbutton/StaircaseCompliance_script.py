@@ -6,15 +6,10 @@ __author__ = "prajwalbkumar"
 # Imports
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.DB.Architecture import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
-import os
+from pyrevit import forms, script
 from System.Collections.Generic import List
 
-script_dir = os.path.dirname(__file__)
-ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
 output = script.get_output()
 
 
