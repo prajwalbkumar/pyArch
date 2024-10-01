@@ -15,9 +15,7 @@ parent_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
 excel_filename = "Door Design Database.xlsx"
 excel_path = os.path.join(parent_dir, excel_filename)
 
-ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
 output = script.get_output()
 
 
