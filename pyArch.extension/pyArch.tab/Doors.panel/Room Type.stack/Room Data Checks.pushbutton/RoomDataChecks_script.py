@@ -13,24 +13,6 @@ import os
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 output = script.get_output()
 
-# FUNCTIONS
-
-def convert_internal_units(value, get_internal=False, units="mm"):
-    if rvt_year >= 2021:
-        if units == "m":
-            units = UnitTypeId.Meters
-        elif units == "m2":
-            units = UnitTypeId.SquareMeters
-        elif units == "cm":
-            units = UnitTypeId.Centimeters
-        elif units == "mm":
-            units = UnitTypeId.Millimeters
-
-    if get_internal:
-        return UnitUtils.ConvertToInternalUnits(value, units)
-    return UnitUtils.ConvertFromInternalUnits(value, units)     
-
-
 # MAIN
 door_elements = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
 
