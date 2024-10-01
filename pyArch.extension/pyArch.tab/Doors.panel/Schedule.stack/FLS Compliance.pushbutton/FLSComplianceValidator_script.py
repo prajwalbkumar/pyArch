@@ -224,6 +224,14 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
     return run_log
 
 # MAIN SCRIPT
+
+door_collector = doors_in_document()
+
+if not door_collector:
+    forms.alert("No doors found in the active document\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+    
 minimum_door_nib = 100
 
 (
@@ -304,8 +312,6 @@ else:
     max_double_leaf = sorted(list_max_double_leaf)[0]
     
     min_height = sorted(list_min_height)[-1]
-
-door_collector = doors_in_document()
 
 doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
