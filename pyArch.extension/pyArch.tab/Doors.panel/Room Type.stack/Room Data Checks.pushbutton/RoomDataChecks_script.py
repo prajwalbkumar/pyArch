@@ -8,7 +8,6 @@ __author__ = "prajwalbkumar"
 
 from Autodesk.Revit.DB import *
 from pyrevit import forms, script, output
-import os
 
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 output = script.get_output()

@@ -6,10 +6,8 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import forms, script
 
-ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 output = script.get_output()
 
@@ -18,16 +16,26 @@ output = script.get_output()
 
 # Get all the Doors
 door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
-door_count = len(door_collector)
+
+if not door_collector:
+    forms.alert("No doors found in the active document\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+try:
+    if door_collector[0].LookupParameter("Fire_Rating").AsString():
+        pass
+except:
+    forms.alert("No Fire_Rating Parameter Found in Document\n\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
 
 # Check if all Doors have Fire Rating. If Not:
-counter = 0
-report_message = []
 failed_doors = []
 
 for door in door_collector:
     door_rating_param = door.LookupParameter("Fire_Rating")
-    # door_mark_param = door.LookupParameter("Mark").AsString()
 
     if door_rating_param:
         hosted_wall_rating = door.Host.LookupParameter("Fire_Rating")
@@ -53,22 +61,28 @@ if failed_doors:
             else:
                 door_mark = door.LookupParameter("Mark").AsString().upper()
             
-            if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+            if door.LookupParameter("Level"):
+                door_level = door.LookupParameter("Level").AsValueString().upper()
+            else:
+                door_level = "NONE"
+            
+            if door.LookupParameter("Room_Name"):
+                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                    door_room_name = "NONE"
+                else:
+                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+            else:
                 door_room_name = "NONE"
+            
+            if door.LookupParameter("Room_Number"):
+                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                    door_room_number = "NONE"
+                else:
+                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
             else:
-                door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-
-            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
                 door_room_number = "NONE"
-            else:
-                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                door_room_number = "NONE"
-            else:
-                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-
-            failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("Fire_Rating").AsString(), str(int(int(hosted_wall_rating.AsString())*0.75))])
+            failed_data.append([output.linkify(door.Id), door_level, door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("Fire_Rating").AsString(), str(int(int(hosted_wall_rating.AsString())*0.75))])
 
     if report == "Show Report":
         output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
@@ -78,7 +92,7 @@ if failed_doors:
         print("\n\n")
         output.print_md("---") # Markdown Line Break
 
-    if report =="Auto-Fill Values":
+    if report == "Auto-Fill Values":
         t = Transaction(doc, "Filling Door Fire Ratings")
         t.Start()
         for door in failed_doors:
