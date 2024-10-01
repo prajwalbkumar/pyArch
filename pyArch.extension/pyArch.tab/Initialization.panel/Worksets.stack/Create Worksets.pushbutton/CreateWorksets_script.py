@@ -37,7 +37,6 @@ def readfile(selected_option, ops):
             workset_names.append(row["Worksets"])
     return workset_names
 
-
 # Create Worksets from the List
 def create_worksets(doc, workset_names):
     counter = 0

@@ -8,6 +8,12 @@ __author__ = "prajwalbkumar"
 from Autodesk.Revit.DB import *
 from pyrevit import forms, script
 import xlrd
+import os
+
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
+excel_filename = "Door Design Database.xlsx"
+excel_path = os.path.join(parent_dir, excel_filename)
 
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
@@ -21,23 +27,40 @@ output = script.get_output()
 door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
 room_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements()
 
+if not door_collector:
+    forms.alert("No doors found in the active document\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+if not room_collector:
+    forms.alert("No room found in the active document\n"
+                            "Run the tool after creating a room", title = "Script Exiting", warn_icon = True)
+    script.exit()
 
 # Check if the Room_Type Parameter is added in the Document or not!
 try:
     if door_collector[0].LookupParameter("Room_Type").AsString():
         pass
 except:
-    forms.alert("No Room_Type Parameter Found in Document\n\n"
+    forms.alert("No Room_Type Parameter Found in Document\n"
                 "Run the Add Room Type Parameter First!", title = "Script Exiting", warn_icon = True)
     script.exit()
 
-
-# Check if the Room_Type Parameters are filled according to the Excel File. 
-options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
-if options == "Select File":
-    excel_path =  forms.pick_excel_file()
-else:
+try:
+    if door_collector[0].LookupParameter("Room_Number").AsString():
+        pass
+except:
+    forms.alert("No Room_Number Parameter Found in Document\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
     script.exit()
+
+
+# # Check if the Room_Type Parameters are filled according to the Excel File. 
+# options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
+# if options == "Select File":
+#     excel_path =  forms.pick_excel_file()
+# else:
+#     script.exit()
 
 excel_workbook = xlrd.open_workbook(excel_path)
 excel_worksheet = excel_workbook.sheet_by_index(1)

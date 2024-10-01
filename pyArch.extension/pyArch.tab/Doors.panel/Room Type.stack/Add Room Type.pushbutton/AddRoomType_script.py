@@ -6,13 +6,17 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import forms, script
 import os
 import xlrd
 import random
 
+# Get the directory two levels above the current script directory
 script_dir = os.path.dirname(__file__)
+parent_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
+excel_filename = "Door Design Database.xlsx"
+excel_path = os.path.join(parent_dir, excel_filename)
+
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
 
@@ -65,12 +69,12 @@ external_definition = group.Definitions.get_Item("Room_Type")
 if external_definition is None:
     raise ValueError("Definition 'Room_Type' not found in shared parameter file")
 
-# Check if the Room_Type Parameters are filled according to the Excel File. 
-options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
-if options == "Select File":
-    excel_path =  forms.pick_excel_file()
-else:
-    script.exit()
+# # Check if the Room_Type Parameters are filled according to the Excel File. 
+# options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
+# if options == "Select File":
+#     excel_path =  forms.pick_excel_file()
+# else:
+#     script.exit()
 
 excel_workbook = xlrd.open_workbook(excel_path)
 excel_worksheet = excel_workbook.sheet_by_index(1)

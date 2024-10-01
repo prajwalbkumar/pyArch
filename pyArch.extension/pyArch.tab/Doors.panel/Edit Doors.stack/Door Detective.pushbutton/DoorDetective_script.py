@@ -21,7 +21,7 @@ try:
     if door_collector[0].LookupParameter("Room_Type").AsString():
         pass
 except:
-    forms.alert("No Room_Type Parameter Found in Document\n\n"
+    forms.alert("No Room_Type Parameter Found in Document\n"
                 "Run the Add Room Type Parameter First!", title = "Script Exiting", warn_icon = True)
     script.exit()
 
