@@ -352,14 +352,16 @@ if checks[2] in user_checks: # HEADROOM CHECK
             break
         
     analytical_view = View3D.CreateIsometric(doc, target_type.Id)
-
     try:
         analytical_view.HideElements(target_instances_type)
     except:
         pass
 
+    view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+    view_analytical = doc.GetElement(view_analytical)
+
     options = Options()
-    options.View = analytical_view
+    options.View = view_analytical
     options.IncludeNonVisibleObjects = True
 
     failed_data = []
@@ -459,7 +461,7 @@ if checks[2] in user_checks: # HEADROOM CHECK
         
             direction = XYZ(0,0,1)
             for point in all_points:
-                intersector = ReferenceIntersector(analytical_view)
+                intersector = ReferenceIntersector(view_analytical)
                 intersector.FindReferencesInRevitLinks = True
                 
                 result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
