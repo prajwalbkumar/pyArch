@@ -13,12 +13,8 @@ import xlrd
 import random
 
 script_dir = os.path.dirname(__file__)
-ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
-
-
-
 
 def get_random_color(pastel_factor = 0.5):
     return [(int((x+pastel_factor)/(1.0+pastel_factor) * 255)) for x in [random.uniform(0,1.0) for i in [1,2,3]]]

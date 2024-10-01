@@ -5,11 +5,9 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import forms, script
 import xlrd
 
-ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 output = script.get_output()
 
@@ -77,9 +75,9 @@ for door in door_collector:
                 failed_door_data.append(door.LookupParameter("Mark").AsString().upper())
             else:
                 failed_door_data.append("NONE")
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
-                failed_data.append(failed_door_data)
+            failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+            failed_door_data.append("ROOM_TYPE VALUE MISMATCH")
+            failed_data.append(failed_door_data)
 
 if failed_data:
     output.print_md("##⚠️ {} Completed. Issues Found ☹️" .format(__title__)) # Markdown Heading 2
@@ -95,7 +93,6 @@ if failed_data:
     output.print_md("---") # Markdown Line Break
     script.exit()
 
-# Check if 
 
 checks = ["No. of Leaves Check", "Leaf Width Check", "Leaf Height Check", "Undercut Check", "Leaf Material Check","Leaf Elevation Check", "Leaf Face Finish Check", "Frame Material Check", "Frame Elevation Check", "Frame Finish Check"]
 select_check = forms.SelectFromList.show(checks, title="Select Door Check", width=300, height=500, button_name="Select Code", multiselect=True)
