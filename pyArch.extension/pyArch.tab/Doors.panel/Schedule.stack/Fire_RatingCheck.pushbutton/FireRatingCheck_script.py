@@ -30,7 +30,6 @@ except:
                 "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
     script.exit()
 
-
 # Check if all Doors have Fire Rating. If Not:
 failed_doors = []
 
