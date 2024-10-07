@@ -20,7 +20,7 @@ tooltip:
     Description:
 
 
-    Creates new worksets based on the departments.
+    Creates new worksets based on different Standards and their Disciplines.
 
     ________________________________________________________________
     
@@ -28,14 +28,17 @@ tooltip:
     How-To:
 
 
-    1. Select the department.
+    1. Select the Standard.
+
+    2. Select the Discipline
 
     ________________________________________________________________
     
     
     Changelog:
     
-    
+    - [03.10.2024] v2.0.0 Create Worksets for DAR, NEOM, DAEP Standards
+
     - [16.09.2024] v1.0.0 Create Worksets
 
     - [25.07.2024] v0.x.x Early Development
