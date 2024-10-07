@@ -15,19 +15,57 @@ import os
 script_dir = os.path.dirname(__file__)
 
 # Read all the Rows from the CSV Files as Lists
-def readfile(selected_option, ops):
+def readfile(selected_option):
 
-    if selected_option == ops[0]:
-        csv_filename = "WorksetLists_ARCHITECTURE.csv"
-        source_file = os.path.join(script_dir, csv_filename)
+    if selected_option == 'DAR':
+        trade_ops = ['Architecture', 'Interior', 'Signage']
+        selected_trade_option = forms.SelectFromList.show (
+        trade_ops,
+        multiselect=False, width=300, height=300,
+        title='Select the discipline for which the worksets have to be created',
+        default=trade_ops[0])  # Optionally, set a default selection  
+
+        if selected_trade_option == trade_ops[0]:
+            csv_filename = "WorksetLists_ARCHITECTURE.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+        
+        elif selected_trade_option == trade_ops[1]:
+            csv_filename = "WorksetLists_INTERIOR.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+
+        elif selected_trade_option == trade_ops[2]:
+            csv_filename = "WorksetLists_SIGNAGE.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+
+        if not selected_trade_option:
+            script.exit()
     
-    elif selected_option == ops[1]:
-        csv_filename = "WorksetLists_INTERIOR.csv"
+    elif selected_option == "NEOM":
+        csv_filename = "WorksetLists_NEOM.csv"
         source_file = os.path.join(script_dir, csv_filename)
 
-    elif selected_option == ops[2]:
-        csv_filename = "WorksetLists_SIGNAGE.csv"
-        source_file = os.path.join(script_dir, csv_filename)
+    elif selected_option == "DAEP":
+        trade_ops = ['Architecture', 'Interior', 'Signage']
+        selected_trade_option = forms.SelectFromList.show (
+        trade_ops,
+        multiselect=False, width=300, height=300,
+        title='Select the discipline for which the worksets have to be created',
+        default=trade_ops[0])  # Optionally, set a default selection  
+
+        if selected_trade_option == trade_ops[0]:
+            csv_filename = "WorksetLists_ARCHITECTURE_DAEP.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+        
+        elif selected_trade_option == trade_ops[1]:
+            csv_filename = "WorksetLists_INTERIOR_DAEP.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+
+        elif selected_trade_option == trade_ops[2]:
+            csv_filename = "WorksetLists_SIGNAGE_DAEP.csv"
+            source_file = os.path.join(script_dir, csv_filename)
+
+        if not selected_trade_option:
+            script.exit()         
 
     with open(source_file) as csvfile: 
         reader = csv.DictReader(csvfile) 
@@ -59,20 +97,20 @@ if not doc.IsWorkshared:
         script.exit()
 
 # Prompt user for trade selection
-ops = ['Architecture', 'Interior', 'Signage']
+ops = ['DAR', 'DAEP', 'NEOM']
 selected_option = forms.SelectFromList.show(
     ops,
     multiselect=False, width=300, height=300,
-    title='Select the trade for which the worksets should be created',
+    title='Select the standards as per which worksets should be created',
     default=ops[0]  # Optionally, set a default selection
 )
-
 if not selected_option:
     script.exit()
 
+
 else:
     # Read the appropriate CSV file based on the selected trade
-    workset_names = readfile(selected_option, ops)
+    workset_names = readfile(selected_option)
 
     if not workset_names:
         forms.alert("No worksets found for " + selected_option + ".", title="Script Cancelled")

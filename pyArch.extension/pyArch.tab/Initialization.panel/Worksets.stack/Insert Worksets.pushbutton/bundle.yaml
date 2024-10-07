@@ -19,9 +19,9 @@ tooltip:
     Description:
 
 
-    Adds new worksets one by one.
+    Adds a new custom Workset.
 
-    Needs the Model to be a Workshared Model.
+    Needs the Model to be Workshared on a Central Model.
 
     ________________________________________________________________
     
@@ -29,14 +29,15 @@ tooltip:
     How-To:
 
 
-    1. Enter the name of the workset to be inserted.
+    1. Enter the name of the Workset to be inserted.
 
     ________________________________________________________________
     
     
     Changelog:
     
-    
+    - [03.10.2024] v1.0.1 Guideline to naming Worksets added
+
     - [16.09.2024] v1.0.0 Insert Worksets
 
     - [25.07.2024] v0.x.x Early Development
