@@ -27,7 +27,7 @@ elif rvt_year == 2022:
 new_document = app.NewProjectDocument(template_path)
 
 # Create a Workshared Model
-new_document.EnableWorksharing("Shared Levels and Grids", "Scope Boxes")
+new_document.EnableWorksharing("Shared Levels and Grids", "Z_Link_URS")
 
 # Prompt user to select a destination folder
 
