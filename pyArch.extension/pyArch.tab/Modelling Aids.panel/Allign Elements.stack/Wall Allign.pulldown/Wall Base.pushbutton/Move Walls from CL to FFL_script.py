@@ -19,7 +19,8 @@ def get_wall_names():
             wall_name = wall.Name
             if wall_name:
                 unique_wall_names.add(wall_name)
-        return list(unique_wall_names)
+                sorted_wall_names = sorted(unique_wall_names)
+        return list(sorted_wall_names)
     except Exception as e:
         forms.alert('Error retrieving wall names: {}'.format(e))
         return []
