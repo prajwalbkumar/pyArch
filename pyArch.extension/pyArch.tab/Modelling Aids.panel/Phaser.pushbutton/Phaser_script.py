@@ -6,23 +6,34 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import forms, script
+from System.Collections.Generic import List
 
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
 app = __revit__.Application # Returns the Revit Application Object
+output = script.get_output()
 
 
 # MAIN
-
 selection = ui_doc.Selection.GetElementIds()
 selected_elements = []
+unowned_elements = []
+elements_to_checkout = List[ElementId]()
 
 if len(selection) > 0:
-    for id in selection:
-        selected_elements.append(doc.GetElement(id))
+    for elementid in selection:
+        elements_to_checkout.Add(elementid)
+    
+    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
 
+    for elementid in selection:    
+        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+            selected_elements.append(doc.GetElement(elementid))
+        else:
+            unowned_elements.append(doc.GetElement(elementid))
+       
 else:
     forms.alert("Select few elements first!", title = "Script Exiting", warn_icon = True)
     script.exit()    
@@ -78,3 +89,17 @@ for element in selected_elements:
 
 t.Commit()
 
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
