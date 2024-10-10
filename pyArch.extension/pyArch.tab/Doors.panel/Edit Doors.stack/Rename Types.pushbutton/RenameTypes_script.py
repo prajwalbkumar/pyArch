@@ -5,8 +5,7 @@ __author__ = "prajwalbkumar"
 
 
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from pyrevit import script
 
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
@@ -53,4 +52,4 @@ if failed_data:
     output.print_md("---") # Markdown Line Break``
     output.print_md("***✅ REFERENCE***")  # Print a Line
     output.print_md("---") # Markdown Line Break
-    output.print_md("** SIMILAR TYPE NAME FOUND**  - Replace the duplicate type with their unique types.")
+    output.print_md("** SIMILAR TYPE NAME FOUND**  - Replace the duplicate type with their correct types.")

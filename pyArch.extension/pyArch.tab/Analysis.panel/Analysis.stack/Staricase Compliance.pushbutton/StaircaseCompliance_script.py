@@ -6,15 +6,11 @@ __author__ = "prajwalbkumar"
 # Imports
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.DB.Architecture import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
-import os
+from pyrevit import forms, script
 from System.Collections.Generic import List
 
-script_dir = os.path.dirname(__file__)
-ui_doc = __revit__.ActiveUIDocument
+
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
 output = script.get_output()
 
 
@@ -325,27 +321,26 @@ if checks[1] in user_checks: # RISER CHECK
     if not failed_data:
         output.print_md("##✅ {} Checks Completed. No Issues Found 😃".format(checks[1]))
         output.print_md("---")
-    
+
 if checks[2] in user_checks: # HEADROOM CHECK
 
     # Collect all linked instances
     linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
     link_name = []
+    target_instances_type = List[ElementId]()
     
     for link in linked_instance:
         link_name.append(link.Name)
 
-    target_instance_names = forms.SelectFromList.show(link_name, title = "Select Target File", width=600, height=600, button_name="Select File", multiselect=True)
+    if link_name:
+        target_instance_names = forms.SelectFromList.show(link_name, title = "Select Target File", width=600, height=600, button_name="Select File", multiselect=True)
+        if not target_instance_names:
+            script.exit()   
 
-    if not target_instance_names:
-        script.exit()
-
-    target_instances_type = List[ElementId]()
-
-    for link in linked_instance:
-        for name in target_instance_names:
-            if name != link.Name:
-                target_instances_type.Add(link.GetTypeId())
+        for link in linked_instance:
+            for name in target_instance_names:
+                if name != link.Name:
+                    target_instances_type.Add(link.GetTypeId())
     
     t = Transaction(doc, "Clearance Check")
     t.Start()
@@ -362,8 +357,11 @@ if checks[2] in user_checks: # HEADROOM CHECK
     except:
         pass
 
+    view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+    view_analytical = doc.GetElement(view_analytical)
+
     options = Options()
-    options.View = analytical_view
+    options.View = view_analytical
     options.IncludeNonVisibleObjects = True
 
     failed_data = []
@@ -463,7 +461,7 @@ if checks[2] in user_checks: # HEADROOM CHECK
         
             direction = XYZ(0,0,1)
             for point in all_points:
-                intersector = ReferenceIntersector(analytical_view)
+                intersector = ReferenceIntersector(view_analytical)
                 intersector.FindReferencesInRevitLinks = True
                 
                 result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z + 1)), direction)
@@ -585,7 +583,6 @@ if checks[3] in user_checks: # NOSING CHECK
                     else:
                         run_nosing = "NONE"
 
-                    
                     failed_stair_data = [output.linkify(stair.Id),
                     base_level,
                     top_level,
@@ -1021,7 +1018,7 @@ if checks[7] in user_checks: # HANDRAIL COUNTS
                     top_level,
                     "NONE",
                     "NONE",
-                    total_rail_needed,
+                    "NONE",
                     "STAIR SKIPPED"
                 ]
             failed_data.append(failed_stair_data)

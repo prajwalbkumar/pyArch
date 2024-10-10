@@ -10,9 +10,9 @@ title: "DAR Startup"
 
 tooltip:   
   en_us: >-
-    Version   =   0.1.0
+    Version   =   0.2.0
 
-    Date       =   16.09.2024
+    Date       =   08.10.2024
 
     ________________________________________________________________
     
@@ -36,6 +36,7 @@ tooltip:
     
     Changelog:
 
+    - [08.10.2024] v0.2.0 UI update, warning for duplicate file name, update project info
 
     - [16.09.2024] v0.1.0 Initiate Project
 
@@ -48,8 +49,9 @@ tooltip:
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/dar-startup"
 
-author: Prajwal B Kumar
+# author: Prajwal B Kumar, 
+#         Roma Ramnani
 
-# authors:
-#   - John Doe
-#   - Jane Doe
+authors:
+  - Prajwal B Kumar
+  - Roma Ramnani

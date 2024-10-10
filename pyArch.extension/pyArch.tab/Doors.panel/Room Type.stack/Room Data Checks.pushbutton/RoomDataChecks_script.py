@@ -7,48 +7,45 @@ __author__ = "prajwalbkumar"
 # IMPORTS
 
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script, output
-import os
-import xlrd
+from pyrevit import forms, script, output
 
-script_dir = os.path.dirname(__file__)
-ui_doc  = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
-rvt_year = int(app.VersionNumber)
 output = script.get_output()
-
-# FUNCTIONS
-
-def convert_internal_units(value, get_internal=False, units="mm"):
-    if rvt_year >= 2021:
-        if units == "m":
-            units = UnitTypeId.Meters
-        elif units == "m2":
-            units = UnitTypeId.SquareMeters
-        elif units == "cm":
-            units = UnitTypeId.Centimeters
-        elif units == "mm":
-            units = UnitTypeId.Millimeters
-
-    if get_internal:
-        return UnitUtils.ConvertToInternalUnits(value, units)
-    return UnitUtils.ConvertFromInternalUnits(value, units)     
-
 
 # MAIN
 door_elements = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
+
+if not door_elements:
+    forms.alert("No doors found in the active document\n\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+try:
+    if door_elements[0].LookupParameter("Room_Name").AsString():
+        pass
+except:
+    forms.alert("No Room_Name Parameter Found in Document\n\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+try:
+    if door_elements[0].LookupParameter("Room_Number").AsString():
+        pass
+except:
+    forms.alert("No Room_Number Parameter Found in Document\n\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+
+
 
 # Choose a Test to Run
 test_list = ["Check Room_Number Parameter", "Check Room_Name Parameter", "Check Door Sequencing"]
 selected_test = forms.SelectFromList.show(test_list, title = "Select Door Test", width=300, height=300, button_name="Select Test", multiselect=True)
 
-# Error
 if not selected_test:
     script.exit()
 
-# No Error
 for test in selected_test:
     # Door - Room Numbers Checks
     if test == test_list[0]:
@@ -59,7 +56,10 @@ for test in selected_test:
             if door.LookupParameter("Mark").AsString() == "" or not door.LookupParameter("Mark").HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append("NONE")
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -78,7 +78,10 @@ for test in selected_test:
             if not door_room_number.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -90,7 +93,10 @@ for test in selected_test:
             elif door_room_number.AsString() == "":
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -105,8 +111,14 @@ for test in selected_test:
                     if not door_mark == door_room_number.AsString():
                         failed_door_data.append(output.linkify(door.Id))
                         failed_door_data.append(door_mark.upper())
-                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                        if door.LookupParameter("Level"):
+                            failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        else:
+                            failed_door_data.append("NONE")
+                        if door.LookupParameter("Room_Name").HasValue:
+                            failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                        else:
+                            failed_door_data.append("NONE")
                         failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
                         failed_door_data.append("MARK & ROOM_NUMBER MISMATCH")
                         failed_data.append(failed_door_data)
@@ -115,8 +127,14 @@ for test in selected_test:
                     if not door_mark[:-1] == door_room_number.AsString():
                         failed_door_data.append(output.linkify(door.Id))
                         failed_door_data.append(door_mark.upper())
-                        failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                        failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                        if door.LookupParameter("Level"):
+                            failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                        else:
+                            failed_door_data.append("NONE")
+                        if door.LookupParameter("Room_Name").HasValue:
+                            failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                        else:
+                            failed_door_data.append("NONE")
                         failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
                         failed_door_data.append("MARK & ROOM_NUMBER MISMATCH")
                         failed_data.append(failed_door_data)
@@ -168,7 +186,10 @@ for test in selected_test:
             if not door_room_name.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Number").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
@@ -180,8 +201,16 @@ for test in selected_test:
             elif door_room_name.AsString() == "":
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
-                failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
+
+                if door.LookupParameter("Room_Name").HasValue:
+                    failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
+                else:
+                    failed_door_data.append("NONE")
+
                 if door.LookupParameter("Room_Number").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Number").AsString().upper())
                 else:
@@ -216,7 +245,10 @@ for test in selected_test:
             if door.LookupParameter("Mark").AsString() == "" or not door.LookupParameter("Mark").HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append("NONE")
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -236,7 +268,10 @@ for test in selected_test:
             if not door_room_number.HasValue:
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -252,7 +287,10 @@ for test in selected_test:
             elif door_room_number.AsString() == "":
                 failed_door_data.append(output.linkify(door.Id))
                 failed_door_data.append(door_mark.upper())
-                failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                if door.LookupParameter("Level"):
+                    failed_door_data.append(door.LookupParameter("Level").AsValueString().upper())
+                else:
+                    failed_door_data.append("NONE")
                 if door.LookupParameter("Room_Name").HasValue:
                     failed_door_data.append(door.LookupParameter("Room_Name").AsString().upper())
                 else:
@@ -306,12 +344,27 @@ for test in selected_test:
 
                     # If Last Character is a Digit, tell the user that not all doors in [ROOM NUMBER] are sequenced with characters
                     if door_mark[-1].isdigit():
+                        if door.LookupParameter("Level"):
+                            door_level = (door.LookupParameter("Level").AsValueString().upper())
+                        else:
+                            door_level = "NONE"
+
+                        if door.LookupParameter("Room_Number").HasValue:
+                            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                        else:
+                            door_room_number = "NONE"
+
+                        if door.LookupParameter("Room_Name").HasValue:
+                            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+                        else:
+                            door_room_name = "NONE"
+
                         failed_door_data = [
                             output.linkify(door.Id),
                             door_mark.upper(),
-                            door.LookupParameter("Level").AsValueString().upper(),
-                            door.LookupParameter("Room_Name").AsString().upper(),
-                            door.LookupParameter("Room_Number").AsString().upper(),
+                            door_level,
+                            door_room_name,
+                            door_room_number,
                             "ALPHABETICAL SEQUENCING REQUIRED"
                         ]
                         failed_data.append(failed_door_data)
@@ -329,12 +382,28 @@ for test in selected_test:
                 for i, char in enumerate(mark_character_string):
                     if char != alphabet[i]:
                         door = door_elements[unq_indices[i]]
+                        
+                        if door.LookupParameter("Level"):
+                            door_level = (door.LookupParameter("Level").AsValueString().upper())
+                        else:
+                            door_level = "NONE"
+
+                        if door.LookupParameter("Room_Number").HasValue:
+                            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                        else:
+                            door_room_number = "NONE"
+
+                        if door.LookupParameter("Room_Name").HasValue:
+                            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+                        else:
+                            door_room_name = "NONE"
+
                         failed_door_data = [
                             output.linkify(door.Id),
                             door.LookupParameter("Mark").AsString().upper(),
-                            door.LookupParameter("Level").AsValueString().upper(),
-                            door.LookupParameter("Room_Name").AsString().upper(),
-                            door.LookupParameter("Room_Number").AsString().upper(),
+                            door_level,
+                            door_room_name,
+                            door_room_number,
                             "INCORRECT SEQUENCING"
                         ]
                         failed_data.append(failed_door_data)

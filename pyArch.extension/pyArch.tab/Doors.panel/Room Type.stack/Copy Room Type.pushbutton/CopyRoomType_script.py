@@ -8,10 +8,15 @@ __author__ = "prajwalbkumar"
 from Autodesk.Revit.DB import *
 from pyrevit import forms, script
 import xlrd
+import os
+from System.Collections.Generic import List
 
-ui_doc = __revit__.ActiveUIDocument
+script_dir = os.path.dirname(__file__)
+parent_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
+excel_filename = "Door Design Database.xlsx"
+excel_path = os.path.join(parent_dir, excel_filename)
+
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
 output = script.get_output()
 
 
@@ -21,23 +26,40 @@ output = script.get_output()
 door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
 room_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType().ToElements()
 
+if not door_collector:
+    forms.alert("No doors found in the active document\n"
+                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    script.exit()
+
+if not room_collector:
+    forms.alert("No room found in the active document\n"
+                            "Run the tool after creating a room", title = "Script Exiting", warn_icon = True)
+    script.exit()
 
 # Check if the Room_Type Parameter is added in the Document or not!
 try:
     if door_collector[0].LookupParameter("Room_Type").AsString():
         pass
 except:
-    forms.alert("No Room_Type Parameter Found in Document\n\n"
+    forms.alert("No Room_Type Parameter Found in Document\n"
                 "Run the Add Room Type Parameter First!", title = "Script Exiting", warn_icon = True)
     script.exit()
 
-
-# Check if the Room_Type Parameters are filled according to the Excel File. 
-options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
-if options == "Select File":
-    excel_path =  forms.pick_excel_file()
-else:
+try:
+    if door_collector[0].LookupParameter("Room_Number").AsString():
+        pass
+except:
+    forms.alert("No Room_Number Parameter Found in Document\n"
+                "Add all DAR Shared Parameters first", title = "Script Exiting", warn_icon = True)
     script.exit()
+
+
+# # Check if the Room_Type Parameters are filled according to the Excel File. 
+# options = forms.alert("Select the Door Design Database Excel File", title = "Open Excel File", warn_icon = False, options=["Select File"])
+# if options == "Select File":
+#     excel_path =  forms.pick_excel_file()
+# else:
+#     script.exit()
 
 excel_workbook = xlrd.open_workbook(excel_path)
 excel_worksheet = excel_workbook.sheet_by_index(1)
@@ -92,6 +114,25 @@ if failed_data:
     else:
         script.exit()
 
+unowned_elements = []
+move_door_ids = []
+elements_to_checkout = List[ElementId]()
+
+for element in door_collector:
+    elements_to_checkout.Add(element.Id)
+
+checkedout_door_collector = []
+
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+for element in door_collector: 
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        checkedout_door_collector.append(element)
+    else:
+        unowned_elements.append(element)
+
+door_collector = checkedout_door_collector
+
 # Access the Room_Number Parameter in the Door
 t = Transaction(doc, "Transfer Room Type Data")
 t.Start()
@@ -133,3 +174,18 @@ for door in door_collector:
 
 forms.alert("Room_Type Parameter filled in all Doors", title = "Script Completed", warn_icon = False)
 t.Commit()
+
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
