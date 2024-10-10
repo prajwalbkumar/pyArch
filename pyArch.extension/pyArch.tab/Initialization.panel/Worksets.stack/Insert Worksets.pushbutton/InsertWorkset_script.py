@@ -3,7 +3,7 @@
 __title__ = "Insert Worksets"
 __author__ = "prakritisrimal"
 
-from pyrevit import forms
+from pyrevit import forms, revit, script
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.Exceptions import InvalidOperationException
 
@@ -13,10 +13,16 @@ doc = __revit__.ActiveUIDocument.Document
 worksharing_enabled = doc.IsWorkshared
 
 if worksharing_enabled:
-    a = forms.ask_for_string(default='Enter the name', prompt='Enter new workset name:', title='Workset Name')
+    a = forms.ask_for_string(default='Enter the name', 
+                             prompt="To create a Workset as per DAR Standards, refer to the BIM Manual - N:\BIM-AUTOMATION\Documents\BIM Manual.pdf\n\n"
+                                "To create a Workset for Architecture discipline, start with 'AR_' \n"
+                                "To create a Workset for Interior discipline, start with 'AI_' \n"
+                                "To create a Workset for Signage discipline, start with 'AG_' \n"
+                                "To create a Workset for Links, start with 'Z_Link_'\n", title='Workset Name')
 
-    if a.isspace() or not a:
-        forms.alert('Enter a proper workset name', title='Invalid Workset Name')
+    if not a:
+        #forms.alert('Enter a proper workset name', title='Invalid Workset Name')
+        script.exit()
     else:
         Ws = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
         Exw = [i.Name for i in Ws]
@@ -42,3 +48,4 @@ if worksharing_enabled:
 else:
     forms.alert("File not Workshared - Create a Workshared Model First!", title='Script Cancelled')
     script.exit()
+

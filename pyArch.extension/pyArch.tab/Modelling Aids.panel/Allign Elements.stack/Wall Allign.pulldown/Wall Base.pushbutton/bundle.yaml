@@ -1,0 +1,58 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Wall Base"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   20.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Hosts walls from (CL) to (FFL) or vice versa.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Click on the tool.
+
+    2. Select the direction of movement.
+
+    3. Select the wall types to be moved.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [20.09.2024] v0.1.0 Host Walls
+
+    - [27.08.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/modelling-aids/wall-allign/wall-base"
+
+author: Prakriti Srimal
+
+# authors:
+#   - Prakriti Srimal
+#   - Prajwal B Kumar

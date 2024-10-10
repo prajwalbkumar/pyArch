@@ -1,0 +1,65 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Door Nib"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.2.0
+    
+    Date       =   25.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Adjusts doors to ensure the correct door-nib (wall to door) dimension.
+
+    Door Nibs should always be in the multiples of 50 mm and have minimum dimensions of 150 mm.
+
+    If any door is below the minimum dimension, or not in the multiple of 50 mm the tool updates it. 
+    
+
+    Optionally, pre-select target doors to only operate on selected doors.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Select target doors
+
+    2. Enter the minimum door-nib dimension.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [25.09.2024] v0.2.0 Rounding Doors Nibs
+    
+    - [20.09.2024] v0.1.0 Updates Selected Doors
+
+    - [02.09.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/door-nib"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

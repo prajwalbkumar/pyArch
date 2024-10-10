@@ -1,0 +1,60 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Add Room Type"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   20.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Adds a "Room_Type" parameter to Rooms and Doors, 
+    
+    then updates it using the Door Design Database Excel file.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Update the Door Design Database Excel file.
+
+    2. Select the file when prompted.
+    
+    3. Assign the Room_Type value from the dropdown in Room Properties.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [20.09.2024] v0.1.0 Adds Room Type Values
+
+    - [29.07.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/add-room-type-parameter"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

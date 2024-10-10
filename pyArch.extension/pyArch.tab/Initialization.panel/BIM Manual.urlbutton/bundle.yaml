@@ -1,5 +1,37 @@
-title: BIM Manual
-tooltip: Opens DAR BIM Manual
-author: prajwalbkumar
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
 
-hyperlink: N:\BIM-AUTOMATION\Documents\BIM Manual.pdf
+title: BIM Manual
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   1.0.0
+    
+    Date       =   16.08.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Opens DAR BIM Manual
+
+    ________________________________________________________________
+    
+
+# highlight: new
+# highlight: updated
+
+hyperlink: https://darcairo.sharepoint.com/:b:/s/ComputationalDesignTeam638-Project-PluginV1/EbXB5rKc_9NKv6pgETGNVVMBmsbaxyoPZVCydto9JmEunA?e=l3mzg3
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

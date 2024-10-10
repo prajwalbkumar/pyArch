@@ -1,0 +1,58 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Door Detective"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.1.0
+    
+    Date       =   20.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Checks door parameters to ensure the correct door type is used, based on the Door Design Database.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Ensure all doors have the "Room_Type" parameter filled. Use "Add Room Type" and "Copy Room Type" first.
+
+    2. Select the Door Design Database when prompted.
+
+    3. Choose the necessary test.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [20.09.2024] v0.1.0 Report Generation
+
+    - [31.07.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+# highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/doors/door-detective"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

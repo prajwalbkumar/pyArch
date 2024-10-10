@@ -1,17 +1,18 @@
 Worksets
-AI_Internal
-AI_Casework
-AI_Ceiling
-AI_Floor Finish
-AI_Furniture
-AI_Specialty Equipment
-AI_Group
-AI_Wall Base
-AI_Wall Finishes
+ARX_External
+ARX_Internal
+ARX_Floor
+ARX_Ceiling
+ARX_FLS
+ARX_Furniture
+ARX_Group
+ARX_Room Separator
+ASK_Skin
+ARX_EL
+ARX_ME
+ARX_ST
 Scope Box
 Shared Levels and Grids
-AI_EL
-AI_ME
 Z_Link_CAD
 Z_Link_AR
 Z_Link_AI

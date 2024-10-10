@@ -1,0 +1,56 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Staircase Compliance"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   0.2.0
+    
+    Date       =   24.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Checks for staircase compliance according to relevant codes.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Select the relevant codes when prompted.
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    
+    - [24.09.2024] v0.2.0 Added compliance checks
+    
+    - [20.09.2024] v0.1.0 Checks all Staircase
+
+    - [19.08.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/analysis/staricase-clearances"
+
+author: Prajwal B Kumar
+
+# authors:
+#   - John Doe
+#   - Jane Doe

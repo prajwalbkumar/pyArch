@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Move Walls from CL to FFL/ from FFL to CL'''
+'''Host Wall on FFL/ from FFL to CL'''
 
 __title__ = "Wall Base"
 __author__ = "prakritisrimal"
@@ -286,7 +286,7 @@ def main():
         return
     
     movement_direction = forms.SelectFromList.show(
-        ['Move Walls from CL to FFL', 'Move Walls from FFL to CL'],
+        ['Host Wall on FFL', 'Host Wall on CL'],
         multiselect=False,
         title='Choose the direction to move walls'
     )

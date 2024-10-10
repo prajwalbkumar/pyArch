@@ -1,0 +1,57 @@
+# General Guideline
+# Leave 2 line spaces after every section
+# Leave 1 Line Space after every line to display items in a new line
+
+title: "Create Worksets"
+
+# context:
+#   - Walls
+#   - Text Notes
+
+tooltip:   
+  en_us: >-
+    Version   =   1.0.0
+    
+    Date       =   16.09.2024
+
+    ________________________________________________________________
+    
+    
+    Description:
+
+
+    Creates new worksets based on different Standards and their Disciplines.
+
+    ________________________________________________________________
+    
+    
+    How-To:
+
+
+    1. Select the Standard.
+
+    2. Select the Discipline
+
+    ________________________________________________________________
+    
+    
+    Changelog:
+    
+    - [03.10.2024] v2.0.0 Create Worksets for DAR, NEOM, DAEP Standards
+
+    - [16.09.2024] v1.0.0 Create Worksets
+
+    - [25.07.2024] v0.x.x Early Development
+    
+    ________________________________________________________________
+
+# highlight: new
+# highlight: updated
+
+help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/create-worksets"
+
+# author: Full Name
+
+authors:
+  - Prakriti Srimal
+  - Prajwal B Kumar
