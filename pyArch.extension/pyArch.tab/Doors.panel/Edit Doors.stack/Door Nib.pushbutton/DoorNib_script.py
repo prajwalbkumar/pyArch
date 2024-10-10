@@ -6,8 +6,9 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI.Selection import ObjectType, ISelectionFilter
-from pyrevit import forms, script
+from Autodesk.Revit.UI import *
+from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
+from pyrevit import revit, forms, script
 import os
 from System.Collections.Generic import List
 
@@ -34,6 +35,7 @@ def convert_internal_units(value, get_internal=False, units="mm"):
         return UnitUtils.ConvertToInternalUnits(value, units)
     return UnitUtils.ConvertFromInternalUnits(value, units)
 
+
 # Definition to Get all the Door Instances in the Document
 def doors_in_document():
     doors = (
@@ -44,8 +46,9 @@ def doors_in_document():
     )
     return doors
 
+
 # Definition to update doors and return failed doors
-def update_doors(door_ids, mimimum_nib_dimension, target_instances_type):
+def update_doors(door_ids, mimimum_nib_dimension):
     base = 50
 
     view_family_types = FilteredElementCollector(doc).OfClass(ViewFamilyType)
@@ -55,11 +58,6 @@ def update_doors(door_ids, mimimum_nib_dimension, target_instances_type):
             break
     
     analytical_view = View3D.CreateIsometric(doc, target_type.Id)
-    try:
-        analytical_view.HideElements(target_instances_type)
-    except:
-        pass
-
     view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
     view_analytical = doc.GetElement(view_analytical)
     
@@ -300,30 +298,12 @@ mimimum_nib_dimension = forms.ask_for_string(
 if not mimimum_nib_dimension:
     script.exit()
 
-# Collect all linked instances
-linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
 
-target_instances_type = List[ElementId]()
-
-if linked_instance:
-    link_name = []
-    for link in linked_instance:
-        link_name.append(link.Name)
-
-    target_instance_names = forms.SelectFromList.show(link_name, title = "Select Link File", width=600, height=600, button_name="Select File", multiselect=True)
-
-    if not target_instance_names:
-        script.exit()
-
-    for link in linked_instance:
-        for name in target_instance_names:
-            if name != link.Name:
-                target_instances_type.Add(link.GetTypeId())    
 
 doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
 skipped_doors = []
-move_door_ids = []
+checked_move_door_ids = []
 for door in door_collector:
     error_code = ""
     failed_door = False
@@ -332,7 +312,7 @@ for door in door_collector:
     try:
         door_type = symbol.LookupParameter("Door_Type").AsString()
         if not door_type.upper() in doors_excluded:
-            move_door_ids.append(door.Id)
+            checked_move_door_ids.append(door.Id)
   
     except:
         skipped_doors.append(door)
@@ -341,62 +321,90 @@ for door in door_collector:
 failed_data = []
 passed_data = []
 
+
+if not checked_move_door_ids:
+    script.exit()
+
+unowned_elements = []
+move_door_ids = []
+elements_to_checkout = List[ElementId]()
+
+for elementid in checked_move_door_ids:
+    elements_to_checkout.Add(elementid)
+
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+for elementid in checked_move_door_ids: 
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        move_door_ids.append(elementid)
+    else:
+        unowned_elements.append(doc.GetElement(elementid))
+    
 t = Transaction(doc, "Update Door Position")
 t.Start()
 
 if move_door_ids:
-    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension, target_instances_type)
+    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
     run_door_ids, run_message = zip(*doors_run_log)
     for index, id in enumerate(run_door_ids):
         try:
             if "FAIL" in run_message[index]:
                 door = doc.GetElement(id)
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                if door.LookupParameter("Mark"):
+                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = door.LookupParameter("Mark").AsString().upper()
+                else:
                     door_mark = "NONE"
+                
+                if door.LookupParameter("Room_Name"):
+                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                        door_room_name = "NONE"
+                    else:
+                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
                 else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
-
-                if door.LookupParameter("Level"):
-                    door_level = door.LookupParameter("Level").AsValueString().upper()
-                else:
-                    door_level = "NONE"  
-
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
                     door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                if door.LookupParameter("Room_Number"):                
+                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                        door_room_number = "NONE"
+                    else:
+                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                else:
                     door_room_number = "NONE"
-                else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-                failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, run_message[index]])
+                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
 
             if "PASS" in run_message[index]:
                 door = doc.GetElement(id)
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                if door.LookupParameter("Mark"):
+                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = door.LookupParameter("Mark").AsString().upper()
+                else:
                     door_mark = "NONE"
+                
+                if door.LookupParameter("Room_Name"):
+                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                        door_room_name = "NONE"
+                    else:
+                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
                 else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
-
-                if door.LookupParameter("Level"):
-                    door_level = door.LookupParameter("Level").AsValueString().upper()
-                else:
-                    door_level = "NONE"    
-
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
                     door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                if door.LookupParameter("Room_Number"):                
+                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                        door_room_number = "NONE"
+                    else:
+                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                else:
                     door_room_number = "NONE"
-                else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
 
-                passed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, run_message[index]])
+                passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
         except:
+            skipped_doors.append(door)
             continue
 
 t.Commit()
@@ -447,30 +455,32 @@ if extra_checks == "YES":
             current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
             next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
 
-
             if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
-
-                if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
+                if doors[i].LookupParameter("Mark"):
+                    if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = doors[i].LookupParameter("Mark").AsString().upper()
+                else:
                     door_mark = "NONE"
-                else:
-                    door_mark = doors[i].LookupParameter("Mark").AsString().upper()
                 
-                if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
+                if doors[i].LookupParameter("Room_Name"):
+                    if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
+                        door_room_name = "NONE"
+                    else:
+                        door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
+                else:
                     door_room_name = "NONE"
-                else:
-                    door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
 
-                if door.LookupParameter("Level"):
-                    door_level = doors[i].LookupParameter("Level").AsValueString().upper()
+                if doors[i].LookupParameter("Room_Number"):
+                    if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
+                        door_room_number = "NONE"
+                    else:
+                        door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
                 else:
-                    door_level = "NONE"
-
-                if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
                     door_room_number = "NONE"
-                else:
-                    door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
 
-                clashing_data.append([output.linkify(doors[i].Id), door_mark, door_level, door_room_name, door_room_number, "DOOR CLASH"])           
+                clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
 
 # Display all list of failed doors, including unequal doors
 if passed_data:
@@ -528,11 +538,6 @@ if skipped_doors:
         else:
             door_room_name = "NONE"
 
-        if door.LookupParameter("Level"):
-            door_level = door.LookupParameter("Level").AsValueString().upper()
-        else:
-            door_level = "NONE"
-
         if door.LookupParameter("Room_Number"):
             if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
                 door_room_number = "NONE"
@@ -541,7 +546,7 @@ if skipped_doors:
         else:
             door_room_number = "NONE"
 
-        failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number])
+        failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
 
     output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
     output.print_md("---") # Markdown Line Break
@@ -552,4 +557,19 @@ if skipped_doors:
 
 if not failed_data and not skipped_doors and not clashing_data:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
     output.print_md("---") # Markdown Line Break
