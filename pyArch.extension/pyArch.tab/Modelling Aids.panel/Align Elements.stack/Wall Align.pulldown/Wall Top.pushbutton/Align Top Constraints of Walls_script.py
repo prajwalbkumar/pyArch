@@ -6,52 +6,135 @@ __author__ = "prakritisrimal - prajwalbkumar"
 
 from pyrevit import script, forms, revit
 from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI import *
+from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
 from System.Collections.Generic import List
 
 output = script.get_output()
 doc = __revit__.ActiveUIDocument.Document
-uidoc = __revit__.ActiveUIDocument
+ui_doc = __revit__.ActiveUIDocument
 
-    
 def filter_concrete_levels(levels):
     """Filter levels to find those named with 'CL'."""
+
     return [level for level in levels if "CL" in level.LookupParameter("Name").AsString()]
 
 def find_next_concrete_level(base_level, concrete_levels):
     """Find the next concrete level above the base level."""
     return next((cl for cl in concrete_levels if cl.Elevation > base_level.Elevation), None)
 
-minimum_wall_height = 1500 * 0.00328084
+# Define a selection filter class for doors
+class WallSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Walls):
+            return True
+        return False
+    
+    def AllowReference(self, ref, point):
+        return False
 
-# Step 1: Prompt the user to select between 'Architecture' or 'Interior' adjustment types
+target_walls = []
+
+#Pre-Selected Walls
+selection = ui_doc.Selection.GetElementIds()
+if len(selection) > 0:
+    for id in selection:
+        element = doc.GetElement(id)
+        try:
+            if element.LookupParameter("Category").AsValueString() == "Walls":
+               target_walls.append(element)
+        except:
+            continue
+
+else:
+    #Custom selection 
+    selection_options = forms.SelectFromList.show (
+        ["Select All Walls", "Choose Specific Walls"],
+        title="Align Wall Top - Select Wall", 
+        button_name='Select', width=600, height=600, 
+        multiselect=False)
+
+    if not selection_options:
+        script.exit()
+
+    elif selection_options == "Select All Walls":
+
+        unique_wall_names = set()
+        wall_type_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
+
+        for wall_type in wall_type_collector:
+            wall_name = wall_type.Name
+            if wall_name:
+                unique_wall_names.add(wall_name)
+
+        if not unique_wall_names:
+            #forms.alert("No walls found in the model. Exiting script.")
+            script.exit()
+
+        sorted_wall_names = sorted(unique_wall_names)
+        
+        wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+        
+        selected_wall_names = forms.SelectFromList.show(sorted_wall_names, multiselect=True, title='Select Walls to Align')
+        if not selected_wall_names:
+            script.exit()
+
+        for wall in wall_collector:
+            if wall.Name in selected_wall_names:
+                target_walls.append(wall)
+
+    else:
+        # Prompt user to select walls
+        try:
+            choices = ui_doc.Selection
+            selected_elements = choices.PickObjects(ObjectType.Element, WallSelectionFilter(), "Select walls only")
+            
+            for selected_element in selected_elements:
+                wall = doc.GetElement(selected_element.ElementId)
+                target_walls.append(wall)
+
+        except:
+            script.exit()
+
+# Filter out not owned element
+collected_elements = target_walls  #List of Elements that the Tool Targets
+owned_elements = []
+unowned_elements = []
+elements_to_checkout = List[ElementId]()
+
+for element in collected_elements:
+    elements_to_checkout.Add(element.Id)
+
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+
+for element in collected_elements:    
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        owned_elements.append(element)
+    else:
+        unowned_elements.append(element)
+
+checkedout_target_walls = owned_elements
+
 adjustment_type = forms.SelectFromList.show(
     ["Architecture", "Interior"],
     title='Select Adjustment Type',
-    button_name='Select',
+    button_name='Select',  width=600, height=600, 
     multiselect=False
 )
-
 if not adjustment_type:
     script.exit()
-
-
 
 # Collect all linked instances
 linked_instance = FilteredElementCollector(doc).OfClass(RevitLinkInstance).ToElements()
 link_name = []
-
-
 for link in linked_instance:
     link_name.append(link.Name)
-
-target_instance_names = forms.SelectFromList.show(link_name, title = "Select Target File", width=600, height=600, button_name="Select File", multiselect=True)
-
-if not target_instance_names:
-    script.exit()
-
 target_instances_type = List[ElementId]()
 target_instance = []
-
+target_instance_names = forms.SelectFromList.show(link_name, title = "Select Structure Link File(s)", width=600, height=600, button_name="Select File", multiselect=True)
+if not target_instance_names:
+    script.exit()
 for link in linked_instance:
     for name in target_instance_names:
         if name != link.Name:
@@ -59,38 +142,23 @@ for link in linked_instance:
             target_instances_type.Add(link.GetTypeId())
 
 
-# Prompt user to select walls for alignment
-unique_wall_names = set()
-wall_type_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
-
-for wall_type in wall_type_collector:
-    wall_name = wall_type.Name
-    if wall_name:
-        unique_wall_names.add(wall_name)
-
-if not unique_wall_names:
-    forms.alert("No walls found in the model. Exiting script.")
-    script.exit()
-
-sorted_wall_names = sorted(unique_wall_names)
-
-selected_wall_names = forms.SelectFromList.show(sorted_wall_names, multiselect=True, title='Select Walls to Align')
-if not selected_wall_names:
-    script.exit()
-
-wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+skipped_data = []
 target_walls = []
 
-for wall in wall_collector:
+# Filter out walls with Profile
+for wall in checkedout_target_walls:
     try:
         if int(wall.SketchId.ToString()) > 0: # Filtering out Walls with profiles
+            skipped_wall_data = [
+                output.linkify(wall.Id),
+                wall.Name,
+                wall.LookupParameter("Unconnected Height").AsValueString(),
+                wall.LookupParameter("Base Constraint").AsValueString(),
+                "WALL WITH PROFILE"
+                ]
+            skipped_data.append(skipped_wall_data)
             continue
-        if wall.Name in selected_wall_names:
-            try:
-                if wall.LookupParameter("Unconnected Height").AsDouble() > minimum_wall_height:
-                    target_walls.append(wall)
-            except:
-                continue
+        target_walls.append(wall)
     except:
         continue
 
@@ -99,12 +167,11 @@ tg = TransactionGroup (doc, "Align Walls")
 tg.Start()
 t = Transaction(doc, "Shorten Wall")
 t.Start()
-failed_counter = 0
-warning_counter = 0
-skipped_counter = 0
+
 failed_data = []
-warning_data = []
-skipped_data = []
+curtain_data = []
+unconnected_data = []
+large_unc_height_data = []
 
 levels = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()
 concrete_levels = filter_concrete_levels(levels)
@@ -120,10 +187,17 @@ for wall in target_walls:
     wall_type = doc.GetElement(wall.WallType.Id)
     if wall_type:
         if wall_type.FamilyName == 'Curtain Wall':
-            warning_counter = +1
+            curtain_wall_data = [
+            output.linkify(wall.Id),
+            wall.Name,
+            wall.LookupParameter("Unconnected Height").AsValueString(),
+            wall.LookupParameter("Base Constraint").AsValueString(),
+            "CHANGE IN CURTAIN PANEL DIVISON"
+            ]
+            curtain_data.append(curtain_wall_data)
             continue
-        else:
-            continue
+    else:
+        continue
 
     if unc_height_param:
         try:
@@ -131,7 +205,12 @@ for wall in target_walls:
             unc_height_mm = unc_height_value * 304.8  # Convert feet to millimeters
                 
             if (-1500 <= unc_height_mm <= 1500):
-                skipped_counter = +1
+                unconnected_wall_data = [ output.linkify(wall.Id),
+                                         wall.Name, 
+                                         wall.LookupParameter("Unconnected Height").AsValueString(), 
+                                         wall.LookupParameter("Base Constraint").AsValueString(),
+                                         "INSUFFICIENT UNCONNECTED HEIGHT"]
+                unconnected_data.append(unconnected_wall_data)
                 continue  # Skip to the next wall
         except Exception as e:
             continue
@@ -144,52 +223,6 @@ for wall in target_walls:
     unc_height_param_value = (1800/304.8) - base_offset_param
     unc_height_param.Set(unc_height_param_value)
     reset_walls.append(wall)
-
-    if warning_counter:
-        warning_wall_data = [
-        output.linkify(wall.Id),
-        wall.Name,
-        "CHANGE IN CURTAIN PANEL DIVISON"
-        ]
-        warning_data.append(warning_wall_data)
-
-    if skipped_counter:
-        skipped_wall_data = [
-            output.linkify(wall.Id),
-            wall.Name,
-            wall.LookupParameter("Unconnected Height").AsValueString(),
-            wall.LookupParameter("Base Constraint").AsValueString(),
-            "WALL TOP NOT ALIGNED"
-        ]
-        skipped_data.append(skipped_wall_data)
-
-    if skipped_data:
-        output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
-        output.print_md("---")
-        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
-        output.print_table(table_data=skipped_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
-        output.print_md("---")
-        output.print_md("***✅ ERROR CODE REFERENCE***")
-        output.print_md("---")
-        output.print_md("**WALL TOP NOT ALIGNED** - Wall Top Aligned as no Element found above it")
-        output.print_md("---")
-    else:
-        output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
-        output.print_md("---")
-
-    if warning_data:
-        output.print_md("##⚠️ {} Completed. Warning ☹️".format(__title__))
-        output.print_md("---")
-        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
-        output.print_table(table_data=warning_data, columns=["ELEMENT ID", "WALL NAME", "ERROR CODE"])
-        output.print_md("---")
-        output.print_md("***✅ ERROR CODE REFERENCE***")
-        output.print_md("---")
-        output.print_md("**CHANGE IN CURTAIN PANEL DIVISION** - Check the wall manually")
-        output.print_md("---")
-    else:
-        output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
-        output.print_md("---")
 
 t.Commit()
 
@@ -241,7 +274,7 @@ for wall in reset_walls:
     sorted_faces = []
     for item in sorted_upper_faces:
         sorted_faces.append(item[1])
-
+    
     upper_face = sorted_faces[0]
     upper_face_z = upper_face.Evaluate(UV(0.5,0.5)).Z
 
@@ -299,34 +332,22 @@ for wall in reset_walls:
         adjusted_walls.append(wall)
 
     else:
-        failed_counter = +1
-
-    if failed_counter:
         failed_wall_data = [
             output.linkify(wall.Id),
             wall.Name,
             wall.LookupParameter("Unconnected Height").AsValueString(),
             wall.LookupParameter("Base Constraint").AsValueString(),
-            "WALL TOP NOT ALIGNED"
+            "MISSING ELEMENT ABOVE"
         ]
         failed_data.append(failed_wall_data)
 
-    if failed_data:
-        output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
-        output.print_md("---")
-        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
-        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
-        output.print_md("---")
-        output.print_md("***✅ ERROR CODE REFERENCE***")
-        output.print_md("---")
-        output.print_md("**WALL TOP NOT ALIGNED** - Unconnected height in the range -1500 to 1500mm \n")
-        output.print_md("---")
-    else:
-        output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
-        output.print_md("---")
+    unc_height = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble()
+    if (unc_height * 304.8) > 10000:
+        large_unc_wall_data = [output.linkify(wall.Id), wall.Name, wall.LookupParameter("Unconnected Height").AsValueString(), 
+                                wall.LookupParameter("Base Constraint").AsValueString(),"MISSING ELEMENT ABOVE"]
+        large_unc_height_data.append(large_unc_wall_data)
 
 t.Commit()
-
 
 if adjustment_type == "Interior":
     t = Transaction(doc, "Increase Ceiling Size")
@@ -388,15 +409,99 @@ if adjustment_type == "Interior":
                     wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).Set(ceiling_top_elevation)
                     # top_offset_param = wall.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
                     # top_offset_param.Set(-new_offset)
+                    adjusted_walls.append(wall)
                     break
+
+        # large_unc_height_data = []
+        # unc_height = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM).AsDouble()
+        # if (unc_height * 304.8) > 10000:
+        #     large_unc_wall_data = [output.linkify(wall.Id), wall.Name, wall.LookupParameter("Unconnected Height").AsValueString(), 
+        #                             wall.LookupParameter("Base Constraint").AsValueString(),"MISSING ELEMENT ABOVE"]
+        #     large_unc_height_data.append(large_unc_wall_data)
 
     for ceiling in new_ceilings:
         doc.Delete(ceiling.Id)
     
-    doc.Delete (analytical_view.Id)
-    doc.Delete (view_analytical.Id)
+    # doc.Delete (analytical_view.Id)
+    # doc.Delete (view_analytical.Id)
     t.Commit()
 tg.Assimilate()
+
+if large_unc_height_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=skipped_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**LARGE UNCONNECTED HEIGHT** - Wall has unconnected height greater than 10,000mm \n")
+    output.print_md("---")    
+
+
+if skipped_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=skipped_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**WALL WITH PROFILE** - Wall has a profile \n")
+    output.print_md("---")
+
+if unconnected_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=unconnected_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**INSUFFICIENT UNCONNECTED HEIGHT** -  Unconnected height in the range -1500 to 1500mm \n")
+    output.print_md("---")
+
+if curtain_data:
+    output.print_md("##⚠️ {} Completed. Warning ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=curtain_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**CHANGE IN CURTAIN PANEL DIVISION** - Check the wall manually")
+    output.print_md("---")
+
+if failed_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID", "WALL NAME", "UNCONNECTED HEIGHT", "BASE CONSTRAINT", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**MISSING ELEMENT ABOVE** - Wall Top not Aligned as no Element found above it \n")
+    output.print_md("---")
+
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
+
+else:
+    output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
+    output.print_md("---")
+
 
 
 

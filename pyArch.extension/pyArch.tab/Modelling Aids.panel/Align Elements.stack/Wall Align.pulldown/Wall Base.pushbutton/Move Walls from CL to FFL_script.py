@@ -6,6 +6,7 @@ __author__ = "prakritisrimal"
 
 from Autodesk.Revit.DB import *
 from pyrevit import revit, forms, script
+from System.Collections.Generic import List
 output = script.get_output()
 
 doc = revit.doc
@@ -72,6 +73,8 @@ def update_base_offset(walls):
     with Transaction(doc, "Update Wall Base Offset") as t:
         try:
             t.Start()
+            base_offset_data = []
+            base_offset_skipped_data = []
             for wall in walls:
                 base_offset_param = wall.LookupParameter("Base Offset")
                 
@@ -81,32 +84,70 @@ def update_base_offset(walls):
                         base_offset_mm = base_offset_value * 304.8  # Convert feet to millimeters
                         
                         if -101 <= base_offset_mm <= 101:
-                            if base_offset_mm > 0:
-                                print("Wall Name: {} (ID: {}) base offset set to 0 from {} mm and wall moved to CL/FFL as per user selection.".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
-                            base_offset_param.Set(0)  # Set to 0, assuming input in feet
+                            if base_offset_mm != 0:
+                                base_offset_wall_data = [ output.linkify(wall.Id),
+                                                            wall.Name, 
+                                                            wall.LookupParameter("Base Constraint").AsValueString(),
+                                                            wall.LookupParameter("Base Offset").AsValueString(), 
+                                                            "WALL BASE OFFSET MODIFIED"]
+                                base_offset_data.append(base_offset_wall_data)
+                                base_offset_param.Set(0)  # Set to 0, assuming input in feet
                         else:
-                            print("Wall Name: {} (ID: {}) has a base offset outside the range of -100 mm to 100 mm. Skipping level change and adjustment.".format(wall.Name, output.linkify(wall.Id)))
-                        
+                            base_offset_skipped_wall_data = [ output.linkify(wall.Id),
+                                                        wall.Name, 
+                                                        wall.LookupParameter("Base Constraint").AsValueString(),
+                                                        wall.LookupParameter("Base Offset").AsValueString(), 
+                                                        "LARGE BASE OFFSET VALUE"]
+                            base_offset_skipped_data.append(base_offset_skipped_wall_data)
+                            continue
+                            
                     except Exception as e:
-                        forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
+                        #forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
                         continue
                 else:
-                    forms.alert("Error: Base offset parameter is None for wall Name {}".format(wall.Name))
+                    #forms.alert("Error: Base offset parameter is None for wall Name {}".format(wall.Name))
                     continue
+
+            if base_offset_data:
+                output.print_md("##⚠️ {} Completed. Along with Modifications 😃".format(__title__))
+                output.print_md("---")
+                output.print_md("❌ There are Updates in your Model. Refer to the **Table Report** below for reference")
+                output.print_table(table_data=base_offset_data, columns=["ELEMENT ID", "WALL NAME", "BASE CONSTRAINT", "BASE OFFSET", "UPDATE CODE"])
+                output.print_md("---")
+                output.print_md("***✅ UPDATE CODE REFERENCE***")
+                output.print_md("---")
+                output.print_md("**WALL BASE OFFSET MODIFIED** -  Wall Base Offset in the range -100 to +100. It has now been set to 0 \n")
+                output.print_md("---")
+
+            if base_offset_skipped_data:
+                output.print_md("##⚠️ {} Completed. Issues found in the Model ☹️".format(__title__))
+                output.print_md("---")
+                output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+                output.print_table(table_data=base_offset_skipped_data, columns=["ELEMENT ID", "WALL NAME", "BASE CONSTRAINT", "BASE OFFSET", "ERROR CODE"])
+                output.print_md("---")
+                output.print_md("***✅ ERROR CODE REFERENCE***")
+                output.print_md("---")
+                output.print_md("**LARGE BASE OFFSET** - Wall Base Alignment skipped as Base Offset is outside the range -100 to +100")
+                output.print_md("---")
+                    
             t.Commit()
         except Exception as e:
             t.RollBack()
-            forms.alert('Error during base offset update: {}'.format(e))
+            #forms.alert('Error during base offset update: {}'.format(e)
+    return 
 
 def set_base_offset_for_wf_walls(walls, movement_direction):
     walls_not_moved = []
     walls_updated = 0  # Counter for updated walls
+
 
     for wall in walls:
         wall_name = wall.Name
         wall_type = doc.GetElement(wall.WallType.Id)
         base_offset_param = wall.LookupParameter("Base Offset")
         unc_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
+        base_updated_data = []
+        base_offset_skipped_data = []
 
         if "WF" in wall_name:
             if movement_direction == 'CL to FFL':
@@ -132,18 +173,33 @@ def set_base_offset_for_wf_walls(walls, movement_direction):
                                         unc_height = unc_height_param.AsDouble()
                                         new_unc_height = unc_height - (new_base_offset)
                                         unc_height_param.Set(new_unc_height)
-                                
+                                base_updated_wall_data = [ output.linkify(wall.Id),
+                                                            wall.Name, 
+                                                            wall.LookupParameter("Base Constraint").AsValueString(),
+                                                            wall.LookupParameter("Base Offset").AsValueString(), 
+                                                            "WALL BASE OFFSET UPDATED"]
+                                base_updated_data.append(base_updated_wall_data)
+                                  
                             else:
-                                print("Wall Name: {} (ID: {}) base offset out of range: {} mm".format(wall.Name, output.linkify(wall.Id), base_offset_mm))
-                                walls_not_moved.append((wall.Name, wall.Id))
+                                continue
                         except Exception as e:
-                            forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
+                            #forms.alert("Error processing base offset for wall Name {}: {}".format(wall.Name, e))
                             walls_not_moved.append((wall.Name, wall.Id))
                 else:
-                    forms.alert("Error: Base offset parameter is None for wall Name {}".format(wall.Name))
+                    #forms.alert("Error: Base offset parameter is None for wall Name {}".format(wall.Name))
                     walls_not_moved.append((wall.Name, wall.Id))
-        else:
-            walls_not_moved.append((wall.Name, wall.Id))
+
+    if base_updated_data:
+        output.print_md("##⚠️ {} Completed. Along with Modifications 😃".format(__title__))
+        output.print_md("---")
+        output.print_md("❌ There are Updates in your Model. Refer to the **Table Report** below for reference")
+        output.print_table(table_data=base_updated_data, columns=["ELEMENT ID", "WALL NAME", "BASE CONSTRAINT", "BASE OFFSET" ,"UPDATE CODE"])
+        output.print_md("---")
+        output.print_md("***✅ UPDATE CODE REFERENCE***")
+        output.print_md("---")
+        output.print_md("**WALL BASE OFFSET UPDATED** - Wall Base Offset set to 100mm for Wall Finishes \n")
+        output.print_md("---")
+
 
     return walls_updated, walls_not_moved
 
@@ -170,6 +226,40 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
     walls_not_moved = []
     walls_updated = 0  # Counter for updated walls
 
+    # for elements that we don't have ownership for
+    collected_elements = walls #List of Elements that the Tool Targets
+    owned_elements = []
+    unowned_elements = []
+    elements_to_checkout = List[ElementId]()
+
+    for elementid in collected_elements:
+        elements_to_checkout.Add(elementid)
+
+    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+
+    for elementid in collected_elements:    
+        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+            owned_elements.append(doc.GetElement(elementid))
+        else:
+            unowned_elements.append(doc.GetElement(elementid))
+
+    if unowned_elements:
+        unowned_element_data = []
+        for element in unowned_elements:
+            try:
+                unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+            except:
+                pass
+
+        output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+
+
     with Transaction(doc, 'Move Walls Based on Direction') as txn:
         try:
             txn.Start()
@@ -187,7 +277,7 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                     
                 if wall_level:
                     wall_level_name = wall_level.Name if wall_level.Name else "Unknown Level"
-                    if movement_direction == 'CL to FFL':
+                    if movement_direction == 'Host Wall on FFL':
                         if "CL" in wall_level_name:
                             if wall_level_id in level_pairs:
                                 target_ffl_id = level_pairs[wall_level_id]
@@ -205,7 +295,7 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                                             unc_height_param.Set(new_unc_height)
                                 else:
                                     walls_not_moved.append((wall_name, wall.Id))
-                    elif movement_direction == 'FFL to CL':
+                    elif movement_direction == 'Host Wall on CL':
                         if "FFL" in wall_level_name:
                             if wall_level_id in level_pairs.values():
                                 target_cl_id = None
@@ -241,42 +331,66 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         except Exception as e:
             txn.RollBack()
             forms.alert('Error during wall movement: {}'.format(e))
-    
+    wall_skipped_data = []
     if walls_not_moved:
-        print("The following walls were not moved:")
-        for wall_name, wall_id in walls_not_moved:
-            print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
+        walls_not_moved_data = [ output.linkify(wall.Id),
+                                    wall.Name, 
+                                    wall.LookupParameter("Base Constraint").AsValueString(),
+                                    wall.LookupParameter("Base Offset").AsValueString(), 
+                                    "WALL BASE ALIGNMENT SKIPPED"]
+        wall_skipped_data.append(walls_not_moved_data)
+
+
+
+    if wall_skipped_data:
+        output.print_md("##⚠️ {} Completed. Issues found in the Model ☹️".format(__title__))
+        output.print_md("---")
+        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+        output.print_table(table_data=wall_skipped_data, columns=["ELEMENT ID", "WALL NAME", "BASE CONSTRAINT", "BASE OFFSET" ,"ERROR CODE"])
+        output.print_md("---")
+        output.print_md("***✅ ERROR CODE REFERENCE***")
+        output.print_md("---")
+        output.print_md("**WALL BASE ALIGNMENT SKIPPED** - Wall Base Alignment skipped. Check manually \n")
+        output.print_md("---")
+
+    else:
+        output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
+        output.print_md("---")
+
+        # for wall_name, wall_id in walls_not_moved:
+        #     print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
     
     # Print the number of walls that were successfully updated
-    print("Number of walls successfully updated: {}".format(walls_updated))
+    # print("Number of walls successfully updated: {}".format(walls_updated))
 
-def check_wall_heights():
-    """Check walls with unconnected height greater than 10,000 mm and print warnings."""
-    walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+
+# def check_wall_heights():
+#     """Check walls with unconnected height greater than 10,000 mm and print warnings."""
+#     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
     
-    if not walls:
-        forms.alert('No walls found in the project.')
-        return
+#     if not walls:
+#         forms.alert('No walls found in the project.')
+#         return
     
-    high_walls = []
+#     high_walls = []
     
-    for wall in walls:
-        try:
-            unconnected_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
-            if unconnected_height_param:
-                height_mm = unconnected_height_param.AsDouble() * 304.8  # Convert feet to millimeters
+#     for wall in walls:
+#         try:
+#             unconnected_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
+#             if unconnected_height_param:
+#                 height_mm = unconnected_height_param.AsDouble() * 304.8  # Convert feet to millimeters
                 
-                if height_mm > 10000:
-                    high_walls.append((wall.Name, wall.Id, height_mm))
-        except Exception as e:
-            print('Error checking height for wall ID {}: {}'.format(wall.Id, e))
+#                 if height_mm > 10000:
+#                     high_walls.append((wall.Name, wall.Id, height_mm))
+#         except Exception as e:
+#             print('Error checking height for wall ID {}: {}'.format(wall.Id, e))
     
-    if high_walls:
-        forms.alert('The following walls have an unconnected height greater than 10,000 mm:')
-        for wall_name, wall_id, height_mm in high_walls:
-            print("Wall Name: {} (ID: {}) - Height: {} mm".format(wall_name, output.linkify(wall_id), height_mm))
-    else:
-        print("No walls found with unconnected height greater than 10,000 mm.")
+#     if high_walls:
+#         forms.alert('The following walls have an unconnected height greater than 10,000 mm:')
+#         for wall_name, wall_id, height_mm in high_walls:
+#             print("Wall Name: {} (ID: {}) - Height: {} mm".format(wall_name, output.linkify(wall_id), height_mm))
+#     else:
+#         print("No walls found with unconnected height greater than 10,000 mm.")
 
 def main():
     wall_names = get_wall_names()
@@ -292,21 +406,21 @@ def main():
     )
     
     if not movement_direction:
-        forms.alert('No direction selected. Exiting script.')
+        script.exit()
         return
     
-    movement_direction = 'CL to FFL' if 'CL to FFL' in movement_direction else 'FFL to CL'
+    #movement_direction = 'CL to FFL' if 'Host Wall on FFL' in movement_direction else 'Host Wall on CL'
     
     selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
     
     if not selected_wall_names:
-        forms.alert('No wall names selected. Exiting script.')
+        script.exit()
         return
     
     move_walls_based_on_direction(movement_direction, selected_wall_names)
     
     # Check for walls with unconnected height greater than 10,000 mm
-    check_wall_heights()
+    #check_wall_heights()
 
 if __name__ == '__main__':
     main()
