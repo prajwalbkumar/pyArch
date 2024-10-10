@@ -9,6 +9,7 @@ from Autodesk.Revit.DB import *
 from pyrevit import forms, script
 import xlrd
 import os
+from System.Collections.Generic import List
 
 script_dir = os.path.dirname(__file__)
 parent_dir = os.path.abspath(os.path.join(script_dir, "..", ".."))
@@ -113,6 +114,25 @@ if failed_data:
     else:
         script.exit()
 
+unowned_elements = []
+move_door_ids = []
+elements_to_checkout = List[ElementId]()
+
+for element in door_collector:
+    elements_to_checkout.Add(element.Id)
+
+checkedout_door_collector = []
+
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+for element in door_collector: 
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        checkedout_door_collector.append(element)
+    else:
+        unowned_elements.append(element)
+
+door_collector = checkedout_door_collector
+
 # Access the Room_Number Parameter in the Door
 t = Transaction(doc, "Transfer Room Type Data")
 t.Start()
@@ -154,3 +174,18 @@ for door in door_collector:
 
 forms.alert("Room_Type Parameter filled in all Doors", title = "Script Completed", warn_icon = False)
 t.Commit()
+
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
