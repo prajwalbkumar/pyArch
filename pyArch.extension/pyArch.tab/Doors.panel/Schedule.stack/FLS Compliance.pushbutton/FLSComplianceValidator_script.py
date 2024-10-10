@@ -6,6 +6,7 @@ __author__ = "prajwalbkumar"
 
 # Imports
 from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
 from pyrevit import forms, script
 import csv 
 import os
@@ -13,6 +14,7 @@ from System.Collections.Generic import List
 
 script_dir = os.path.dirname(__file__)
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
+ui_doc = __revit__.ActiveUIDocument
 app = __revit__.Application # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
 output = script.get_output()
@@ -229,13 +231,59 @@ def update_doors(door_ids, door_error_code, mimimum_nib_dimension, min_height, m
     doc.Delete(view_analytical.Id)
     return run_log
 
+# Define a selection filter class for doors
+class DoorSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Doors):
+            return True
+        return False
+    
+    def AllowReference(self, ref, point):
+        return False
+    
+
 # MAIN SCRIPT
 
-door_collector = doors_in_document()
+door_collector = []
+
+selection = ui_doc.Selection.GetElementIds()
+if len(selection) > 0:
+    for id in selection:
+        element = doc.GetElement(id)
+        try:
+            if element.LookupParameter("Category").AsValueString() == "Doors":
+               door_collector.append(element)
+        except:
+            continue
+
+else:
+    #Custom selection 
+    selection_options = forms.alert("This tool checks and updates doors against FLS Codes.",
+                                    title="FLS Compliance - Select Doors", 
+                                    warn_icon=False, 
+                                    options=["Check All Doors", "Choose Specific Doors"])
+
+    if not selection_options:
+        script.exit()
+
+    elif selection_options == "Check All Doors":
+        door_collector = doors_in_document()
+
+    else:
+        # Prompt user to select doors
+        try:
+            choices = ui_doc.Selection
+            selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
+            
+            for selected_element in selected_elements:
+                door = doc.GetElement(selected_element.ElementId)
+                door_collector.append(door)
+
+        except:
+            script.exit()
 
 if not door_collector:
-    forms.alert("No doors found in the active document\n"
-                            "Run the tool after creating a door", title = "Script Exiting", warn_icon = True)
+    forms.alert("No doors found in the active document", title="Script Exiting", warn_icon=True)
     script.exit()
 
 
@@ -332,6 +380,26 @@ failed_double_door_ids = []
 failed_double_door_error_code= []
 failed_unequal_door_ids = []
 failed_unequal_door_error_code = []
+
+unowned_elements = []
+move_door_ids = []
+elements_to_checkout = List[ElementId]()
+
+for element in door_collector:
+    elements_to_checkout.Add(element.Id)
+
+checkedout_door_collector = []
+
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+for element in door_collector: 
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        checkedout_door_collector.append(element)
+    else:
+        unowned_elements.append(element)
+
+door_collector = checkedout_door_collector
+
 for door in door_collector:
     error_code = ""
     failed_door = False
@@ -741,10 +809,13 @@ if failed_data or skipped_doors:
         if skipped_doors:
             failed_data = []
             for door in skipped_doors:
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
+                if door.LookupParameter("Mark"):
+                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = door.LookupParameter("Mark").AsString().upper()
                 else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
+                    door_mark = "NONE"
                 
                 if door.LookupParameter("Room_Name"):
                     if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
@@ -779,6 +850,21 @@ if failed_data or skipped_doors:
     if not user_action:
         script.exit()
 
-if not failed_data and not skipped_doors:
+if not failed_data and not skipped_doors and not unowned_elements:
     output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+
+if unowned_elements:
+    unowned_element_data = []
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
     output.print_md("---") # Markdown Line Break
