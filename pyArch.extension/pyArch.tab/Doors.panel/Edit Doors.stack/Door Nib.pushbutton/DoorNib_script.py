@@ -12,6 +12,14 @@ from pyrevit import revit, forms, script
 import os
 from System.Collections.Generic import List
 
+import time
+from datetime import datetime
+from Extract.RunData import get_run_data
+
+start_time = time.time()
+manual_time = 0
+total_element_count = 0
+
 script_dir = os.path.dirname(__file__)
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
@@ -245,331 +253,364 @@ class DoorSelectionFilter(ISelectionFilter):
     def AllowReference(self, ref, point):
         return False
     
-# MAIN SCRIPT
-door_collector = []
+try:
+    # MAIN SCRIPT
+    door_collector = []
 
-selection = ui_doc.Selection.GetElementIds()
-if len(selection) > 0:
-    for id in selection:
-        element = doc.GetElement(id)
-        try:
-            if element.LookupParameter("Category").AsValueString() == "Doors":
-               door_collector.append(element)
-        except:
-            continue
-
-else:
-    #Custom selection 
-    selection_options = forms.alert("This tool checks and updates door nibs.",
-                                    title="Door Nib - Select Doors", 
-                                    warn_icon=False, 
-                                    options=["Check All Doors", "Choose Specific Doors"])
-
-    if not selection_options:
-        script.exit()
-
-    elif selection_options == "Check All Doors":
-        door_collector = doors_in_document()
+    selection = ui_doc.Selection.GetElementIds()
+    if len(selection) > 0:
+        for id in selection:
+            element = doc.GetElement(id)
+            try:
+                if element.LookupParameter("Category").AsValueString() == "Doors":
+                    door_collector.append(element)
+            except:
+                continue
 
     else:
-        # Prompt user to select doors
-        try:
-            choices = ui_doc.Selection
-            selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
-            
-            for selected_element in selected_elements:
-                door = doc.GetElement(selected_element.ElementId)
-                door_collector.append(door)
+        #Custom selection 
+        selection_options = forms.alert("This tool checks and updates door nibs.",
+                                        title="Door Nib - Select Doors", 
+                                        warn_icon=False, 
+                                        options=["Check All Doors", "Choose Specific Doors"])
 
-        except:
+        if not selection_options:
             script.exit()
 
-if not door_collector:
-    forms.alert("No doors found in the active document", title="Script Exiting", warn_icon=True)
-    script.exit()
+        elif selection_options == "Check All Doors":
+            door_collector = doors_in_document()
 
-mimimum_nib_dimension = forms.ask_for_string(
-    title="Enter the Minimum Door Nib Dimension.",
-    prompt="If the current nib dimension is smaller than this value, it will be\n"
-            "updated to match.\n\n"
-            "Else, will be rounded to the nearest 50mm.\n",
-    default="150")
+        else:
+            # Prompt user to select doors
+            try:
+                choices = ui_doc.Selection
+                selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
+                
+                for selected_element in selected_elements:
+                    door = doc.GetElement(selected_element.ElementId)
+                    door_collector.append(door)
 
-if not mimimum_nib_dimension:
-    script.exit()
+            except:
+                script.exit()
 
+    if not door_collector:
+        forms.alert("No doors found in the active document", title="Script Exiting", warn_icon=True)
+        script.exit()
 
+    mimimum_nib_dimension = forms.ask_for_string(
+        title="Enter the Minimum Door Nib Dimension.",
+        prompt="If the current nib dimension is smaller than this value, it will be\n"
+                "updated to match.\n\n"
+                "Else, will be rounded to the nearest 50mm.\n",
+        default="150")
 
-doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
-
-skipped_doors = []
-checked_move_door_ids = []
-for door in door_collector:
-    error_code = ""
-    failed_door = False
-    error_message = ""
-    symbol = door.Symbol
-    try:
-        door_type = symbol.LookupParameter("Door_Type").AsString()
-        if not door_type.upper() in doors_excluded:
-            checked_move_door_ids.append(door.Id)
-  
-    except:
-        skipped_doors.append(door)
-        continue
-
-failed_data = []
-passed_data = []
+    if not mimimum_nib_dimension:
+        script.exit()
 
 
-if not checked_move_door_ids:
-    script.exit()
 
-unowned_elements = []
-move_door_ids = []
-elements_to_checkout = List[ElementId]()
+    doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 
-for elementid in checked_move_door_ids:
-    elements_to_checkout.Add(elementid)
+    skipped_doors = []
+    checked_move_door_ids = []
 
-WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-for elementid in checked_move_door_ids: 
-    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-        move_door_ids.append(elementid)
-    else:
-        unowned_elements.append(doc.GetElement(elementid))
-    
-t = Transaction(doc, "Update Door Position")
-t.Start()
-
-if move_door_ids:
-    doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
-    run_door_ids, run_message = zip(*doors_run_log)
-    for index, id in enumerate(run_door_ids):
+    for door in door_collector:
+        error_code = ""
+        failed_door = False
+        error_message = ""
+        symbol = door.Symbol
         try:
-            if "FAIL" in run_message[index]:
-                door = doc.GetElement(id)
-                if door.LookupParameter("Mark"):
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                else:
-                    door_mark = "NONE"
-                
-                if door.LookupParameter("Room_Name"):
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-                else:
-                    door_room_name = "NONE"
-
-                if door.LookupParameter("Room_Number"):                
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-                else:
-                    door_room_number = "NONE"
-
-                failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
-
-            if "PASS" in run_message[index]:
-                door = doc.GetElement(id)
-                if door.LookupParameter("Mark"):
-                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = door.LookupParameter("Mark").AsString().upper()
-                else:
-                    door_mark = "NONE"
-                
-                if door.LookupParameter("Room_Name"):
-                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-                else:
-                    door_room_name = "NONE"
-
-                if door.LookupParameter("Room_Number"):                
-                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-                else:
-                    door_room_number = "NONE"
-
-                passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
+            door_type = symbol.LookupParameter("Door_Type").AsString()
+            if not door_type.upper() in doors_excluded:
+                checked_move_door_ids.append(door.Id)
+    
         except:
             skipped_doors.append(door)
             continue
 
-t.Commit()
-
-
-clashing_data = []
-
-extra_checks = forms.alert("Would you like to check for any Door - Door Nib Clashes in the project?", title= "Door-Door Clash Test", warn_icon=False, options=["YES", "NO"])
-
-if extra_checks == "YES":
-    # Check for Doors that are too close to each other
-    wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
-
-
-
-    door_minimum_clearance = 300
-    door_door_clearance = door_minimum_clearance * 0.00328084
-    for wall in wall_collector:
-        wall_dependent_elements = wall.GetDependentElements(None)  # Get all dependent elements
-
-        # Create a category filter to filter out door instances
-        door_filter = ElementCategoryFilter(BuiltInCategory.OST_Doors)
-
-        # Collect the dependent elements that are doors
-        dependent_doors = []
-        for element_id in wall_dependent_elements:
-            element = doc.GetElement(element_id)
-            if element and door_filter.PassesFilter(element):  # Check if the element is a door
-                dependent_doors.append(element)
-        
-        if not len(dependent_doors) > 1:
-            continue
-        
-        indexed_door = []
-        for door in dependent_doors:
-            host_parameter = door.HostParameter
-            indexed_door.append((door, host_parameter))
-
-        sorted_indexed_door = sorted(indexed_door, key=lambda x: x[1])
-
-        doors = [item[0] for item in indexed_door]           # Extracting doors
-        host_parameters = [item[1] for item in indexed_door] # Extracting host parameters
-        
-        for i in range(len(doors) - 1):
-            current_door_rough_width = doors[i].Symbol.LookupParameter("Rough Width").AsDouble()
-            next_door_rough_width = doors[i+1].Symbol.LookupParameter("Rough Width").AsDouble()
-            
-            current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
-            next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
-
-            if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
-                if doors[i].LookupParameter("Mark"):
-                    if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
-                        door_mark = "NONE"
-                    else:
-                        door_mark = doors[i].LookupParameter("Mark").AsString().upper()
-                else:
-                    door_mark = "NONE"
-                
-                if doors[i].LookupParameter("Room_Name"):
-                    if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
-                        door_room_name = "NONE"
-                    else:
-                        door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
-                else:
-                    door_room_name = "NONE"
-
-                if doors[i].LookupParameter("Room_Number"):
-                    if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
-                        door_room_number = "NONE"
-                    else:
-                        door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
-                else:
-                    door_room_number = "NONE"
-
-                clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
-
-# Display all list of failed doors, including unequal doors
-if passed_data:
-    output.print_md("##✅ {} Completed. Instances Have Been Updated 😃" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("✔️ Some issues have been resolved. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=passed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "SUCCESS CODE"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
-    output.print_md("***✅ SUCCESS CODE REFERENCE***")  # Print a Line
-    output.print_md("---") # Markdown Line Break
-    output.print_md("**CODE A PASS**  - Door Moved")
-    output.print_md("---") # Markdown Line Break
-
-if failed_data:
-    output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
-    output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
-    output.print_md("---") # Markdown Line Break
-    output.print_md("**CODE A FAIL**  - Door could not be moved")
-    output.print_md("---") # Markdown Line Break
-
-if clashing_data:
-    output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=clashing_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
-    output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
-    output.print_md("---") # Markdown Line Break
-    output.print_md("**DOOR CLASH**  - Keep adjacent doors atleast {} mm apart." .format(door_minimum_clearance))
-    output.print_md("---") # Markdown Line Break
-
-if skipped_doors:
     failed_data = []
-    for door in skipped_doors:
-        if door.LookupParameter("Mark"):
-            if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                door_mark = "NONE"
-            else:
-                door_mark = door.LookupParameter("Mark").AsString().upper()
+    passed_data = []
+
+
+    if not checked_move_door_ids:
+        script.exit()
+
+    unowned_elements = []
+    move_door_ids = []
+    elements_to_checkout = List[ElementId]()
+
+    for elementid in checked_move_door_ids:
+        elements_to_checkout.Add(elementid)
+
+    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+    for elementid in checked_move_door_ids: 
+        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+            move_door_ids.append(elementid)
         else:
-            door_mark = "NONE"
+            unowned_elements.append(doc.GetElement(elementid))
         
-        if door.LookupParameter("Room_Name"):
-            if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+    t = Transaction(doc, "Update Door Position")
+    t.Start()
+
+
+    if move_door_ids:
+        manual_time = manual_time + 120
+        total_element_count = total_element_count + len(move_door_ids) 
+            
+        doors_run_log = update_doors(move_door_ids, mimimum_nib_dimension)
+        run_door_ids, run_message = zip(*doors_run_log)
+        for index, id in enumerate(run_door_ids):
+            try:
+                if "FAIL" in run_message[index]:
+                    door = doc.GetElement(id)
+                    if door.LookupParameter("Mark"):
+                        if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                            door_mark = "NONE"
+                        else:
+                            door_mark = door.LookupParameter("Mark").AsString().upper()
+                    else:
+                        door_mark = "NONE"
+                    
+                    if door.LookupParameter("Room_Name"):
+                        if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                            door_room_name = "NONE"
+                        else:
+                            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+                    else:
+                        door_room_name = "NONE"
+
+                    if door.LookupParameter("Room_Number"):                
+                        if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                            door_room_number = "NONE"
+                        else:
+                            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                    else:
+                        door_room_number = "NONE"
+
+                    failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
+
+                if "PASS" in run_message[index]:
+                    door = doc.GetElement(id)
+                    if door.LookupParameter("Mark"):
+                        if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                            door_mark = "NONE"
+                        else:
+                            door_mark = door.LookupParameter("Mark").AsString().upper()
+                    else:
+                        door_mark = "NONE"
+                    
+                    if door.LookupParameter("Room_Name"):
+                        if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                            door_room_name = "NONE"
+                        else:
+                            door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+                    else:
+                        door_room_name = "NONE"
+
+                    if door.LookupParameter("Room_Number"):                
+                        if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                            door_room_number = "NONE"
+                        else:
+                            door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                    else:
+                        door_room_number = "NONE"
+
+                    passed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, run_message[index]])
+            except:
+                skipped_doors.append(door)
+                continue
+
+    t.Commit()
+
+
+    clashing_data = []
+
+    extra_checks = forms.alert("Would you like to check for any Door - Door Nib Clashes in the project?", title= "Door-Door Clash Test", warn_icon=False, options=["YES", "NO"])
+
+    if extra_checks == "YES":
+        # Check for Doors that are too close to each other
+        wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+
+        manual_time = manual_time + 120
+
+        
+        door_minimum_clearance = 300
+        door_door_clearance = door_minimum_clearance * 0.00328084
+        for wall in wall_collector:
+            wall_dependent_elements = wall.GetDependentElements(None)  # Get all dependent elements
+
+            # Create a category filter to filter out door instances
+            door_filter = ElementCategoryFilter(BuiltInCategory.OST_Doors)
+
+            # Collect the dependent elements that are doors
+            dependent_doors = []
+            for element_id in wall_dependent_elements:
+                element = doc.GetElement(element_id)
+                if element and door_filter.PassesFilter(element):  # Check if the element is a door
+                    dependent_doors.append(element)
+            
+            if not len(dependent_doors) > 1:
+                continue
+            
+            indexed_door = []
+            total_element_count = total_element_count + len(dependent_doors) 
+            for door in dependent_doors:
+                host_parameter = door.HostParameter
+                indexed_door.append((door, host_parameter))
+
+            sorted_indexed_door = sorted(indexed_door, key=lambda x: x[1])
+
+            doors = [item[0] for item in indexed_door]           # Extracting doors
+            host_parameters = [item[1] for item in indexed_door] # Extracting host parameters
+            
+            for i in range(len(doors) - 1):
+                current_door_rough_width = doors[i].Symbol.LookupParameter("Rough Width").AsDouble()
+                next_door_rough_width = doors[i+1].Symbol.LookupParameter("Rough Width").AsDouble()
+                
+                current_door_end_parameter = host_parameters[i] + (current_door_rough_width/2)
+                next_door_start_parameter = host_parameters[i+1] - (next_door_rough_width/2)
+
+                if (current_door_end_parameter + door_door_clearance) > next_door_start_parameter:
+                    if doors[i].LookupParameter("Mark"):
+                        if not doors[i].LookupParameter("Mark").HasValue or doors[i].LookupParameter("Mark").AsString() == "": 
+                            door_mark = "NONE"
+                        else:
+                            door_mark = doors[i].LookupParameter("Mark").AsString().upper()
+                    else:
+                        door_mark = "NONE"
+                    
+                    if doors[i].LookupParameter("Room_Name"):
+                        if not doors[i].LookupParameter("Room_Name").HasValue or doors[i].LookupParameter("Room_Name").AsString() == "": 
+                            door_room_name = "NONE"
+                        else:
+                            door_room_name = doors[i].LookupParameter("Room_Name").AsString().upper()
+                    else:
+                        door_room_name = "NONE"
+
+                    if doors[i].LookupParameter("Room_Number"):
+                        if not doors[i].LookupParameter("Room_Number").HasValue or doors[i].LookupParameter("Room_Number").AsString() == "": 
+                            door_room_number = "NONE"
+                        else:
+                            door_room_number = doors[i].LookupParameter("Room_Number").AsString().upper()
+                    else:
+                        door_room_number = "NONE"
+
+                    clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
+
+    # Display all list of failed doors, including unequal doors
+    if passed_data:
+        output.print_md("##✅ {} Completed. Instances Have Been Updated 😃" .format(__title__)) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("✔️ Some issues have been resolved. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=passed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "SUCCESS CODE"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        output.print_md("***✅ SUCCESS CODE REFERENCE***")  # Print a Line
+        output.print_md("---") # Markdown Line Break
+        output.print_md("**CODE A PASS**  - Door Moved")
+        output.print_md("---") # Markdown Line Break
+
+    if failed_data:
+        output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+        output.print_md("---") # Markdown Line Break
+        output.print_md("**CODE A FAIL**  - Door could not be moved")
+        output.print_md("---") # Markdown Line Break
+
+    if clashing_data:
+        output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=clashing_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "ERROR CODE"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        output.print_md("***✅ ERROR CODE REFERENCE***")  # Print a Line
+        output.print_md("---") # Markdown Line Break
+        output.print_md("**DOOR CLASH**  - Keep adjacent doors atleast {} mm apart." .format(door_minimum_clearance))
+        output.print_md("---") # Markdown Line Break
+
+    if skipped_doors:
+        failed_data = []
+        for door in skipped_doors:
+            if door.LookupParameter("Mark"):
+                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                    door_mark = "NONE"
+                else:
+                    door_mark = door.LookupParameter("Mark").AsString().upper()
+            else:
+                door_mark = "NONE"
+            
+            if door.LookupParameter("Room_Name"):
+                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                    door_room_name = "NONE"
+                else:
+                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
+            else:
                 door_room_name = "NONE"
-            else:
-                door_room_name = door.LookupParameter("Room_Name").AsString().upper()
-        else:
-            door_room_name = "NONE"
 
-        if door.LookupParameter("Room_Number"):
-            if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+            if door.LookupParameter("Room_Number"):
+                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                    door_room_number = "NONE"
+                else:
+                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+            else:
                 door_room_number = "NONE"
-            else:
-                door_room_number = door.LookupParameter("Room_Number").AsString().upper()
-        else:
-            door_room_number = "NONE"
 
-        failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
+            failed_data.append([output.linkify(door.Id), door_mark, door.LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number])
 
-    output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
+        output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ Make sure you have used DAR Families - Door_Type Parameter Missing or Empty. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
 
-if not failed_data and not skipped_doors and not clashing_data:
-    output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
+    if not failed_data and not skipped_doors and not clashing_data:
+        output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
 
-if unowned_elements:
-    unowned_element_data = []
-    for element in unowned_elements:
-        try:
-            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
-        except:
-            pass
+    if unowned_elements:
+        unowned_element_data = []
+        for element in unowned_elements:
+            try:
+                unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+            except:
+                pass
 
-    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
-    output.print_md("---") # Markdown Line Break
-    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
-    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
-    print("\n\n")
-    output.print_md("---") # Markdown Line Break
+        output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+        output.print_md("---") # Markdown Line Break
+        output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+        output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+        print("\n\n")
+        output.print_md("---") # Markdown Line Break
+
+    end_time = time.time()
+    runtime = end_time - start_time
+            
+    run_result = "Tool ran successfully"
+    if total_element_count:
+        element_count = total_element_count
+    else:
+        element_count = 0
+
+    error_occured ="Nil"
+
+    get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+except Exception as e:
+    
+  
+    end_time = time.time()
+    runtime = end_time - start_time
+
+    error_occured = "Error occurred: {}".format(str(e))
+    run_result = "Error"
+    element_count = 0
+    
+    get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
