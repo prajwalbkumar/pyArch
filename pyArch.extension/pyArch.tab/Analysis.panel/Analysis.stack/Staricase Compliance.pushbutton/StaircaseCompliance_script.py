@@ -608,6 +608,7 @@ try:
                         "NOSING LENGTH ERROR"
                         ]
                         failed_data.append(failed_stair_data)
+                
             except:
                 if stair.LookupParameter("Base Level"):
                     base_level = stair.LookupParameter("Base Level").AsValueString()
@@ -801,7 +802,7 @@ try:
             output.print_md("---")
             output.print_md("***✅ ERROR CODE REFERENCE***")
             output.print_md("---")
-            output.print_md("**HANDRAIL CLEARANCE ERROR** - The handrail clearance should be between {} mm - {} mm\n" .format(handrail_height_min, handrail_height_max))
+            output.print_md("**HANDRAIL CLEARANCE ERROR** - The handrail clearance should be between {} mm\n" .format(code_handrail_clearance))
             output.print_md("---")
 
         if not failed_data:

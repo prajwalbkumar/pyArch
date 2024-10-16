@@ -272,13 +272,13 @@ try:
         selection_options = forms.alert("This tool checks and updates door nibs.",
                                         title="Door Nib - Select Doors", 
                                         warn_icon=False, 
-                                        options=["Check All Doors", "Choose Specific Doors"])
+                                        options=["Choose Specific Doors"])
 
         if not selection_options:
             script.exit()
 
-        elif selection_options == "Check All Doors":
-            door_collector = doors_in_document()
+        # elif selection_options == "Check All Doors":
+        #     door_collector = doors_in_document()
 
         else:
             # Prompt user to select doors
