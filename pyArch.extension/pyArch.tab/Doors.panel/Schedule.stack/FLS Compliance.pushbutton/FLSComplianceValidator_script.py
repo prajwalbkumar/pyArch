@@ -319,9 +319,9 @@ try:
         script.exit()
 
     if len(user_code) == 1:
-        for code in user_code:
+        for input_code in user_code:
             # Find the Index Values of the Code Selected from the Main Code List
-            code_row = code.index(code)
+            code_row = code.index(input_code)
 
         # Get the Value of the Rows against the Code Selected
         min_single_leaf = int(min_single_leaf[code_row])
@@ -409,6 +409,17 @@ try:
 
     manual_time = manual_time + 600
     total_element_count = total_element_count + len(door_collector) 
+
+    # print("min_single_leaf {}" .format(min_single_leaf))
+    # print("min_unq_main_leaf {}" .format(min_unq_main_leaf))
+    # print("min_unq_side_leaf {}" .format(min_unq_side_leaf))
+    # print("min_double_leaf {}" .format(min_double_leaf))
+    # print("max_single_leaf {}" .format(max_single_leaf))
+    # print("max_unq_main_leaf {}" .format(max_unq_main_leaf))
+    # print("max_unq_side_leaf {}" .format(max_unq_side_leaf))
+    # print("max_double_leaf {}" .format(max_double_leaf))
+    # print("min_height {}" .format(min_height))
+
 
     for door in door_collector:
         error_code = ""
@@ -533,7 +544,7 @@ try:
                 else:
                     door_room_number = "NONE"
 
-                failed_data.append([output.linkify(door.Id), door_level, door_room_name, door_room_number, error_message])
+                failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, error_message])
 
         except:
             skipped_doors.append(door)
@@ -559,7 +570,7 @@ try:
                     else:
                         door_mark = door.LookupParameter("Mark").AsString().upper()
                     
-                    if door.LookupParameter("Level"):
+                    if door.LookupParameter(" "):
                         door_level = door.LookupParameter("Level").AsValueString().upper()
                     else:
                         door_level = "NONE"
@@ -580,7 +591,7 @@ try:
                     else:
                         door_room_number = "NONE"
 
-                    failed_data.append([output.linkify(door.Id), door_level, door_room_name, door_room_number])
+                    failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number])
 
                 output.print_md("##⚠️ Doors Skipped ☹️") # Markdown Heading 2
                 output.print_md("---") # Markdown Line Break
