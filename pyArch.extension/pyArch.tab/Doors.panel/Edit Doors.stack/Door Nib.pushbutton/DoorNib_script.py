@@ -336,19 +336,22 @@ try:
         script.exit()
 
     unowned_elements = []
-    move_door_ids = []
-    elements_to_checkout = List[ElementId]()
+    if doc.IsWorkshared:
+        move_door_ids = []
+        elements_to_checkout = List[ElementId]()
 
-    for elementid in checked_move_door_ids:
-        elements_to_checkout.Add(elementid)
+        for elementid in checked_move_door_ids:
+            elements_to_checkout.Add(elementid)
 
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-    for elementid in checked_move_door_ids: 
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-            move_door_ids.append(elementid)
-        else:
-            unowned_elements.append(doc.GetElement(elementid))
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        for elementid in checked_move_door_ids: 
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                move_door_ids.append(elementid)
+            else:
+                unowned_elements.append(doc.GetElement(elementid))
+    else:
+        move_door_ids = checked_move_door_ids
         
     t = Transaction(doc, "Update Door Position")
     t.Start()
@@ -614,3 +617,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

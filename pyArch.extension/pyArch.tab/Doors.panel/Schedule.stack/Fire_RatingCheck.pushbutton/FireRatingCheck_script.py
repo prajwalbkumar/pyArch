@@ -3,7 +3,6 @@
 __title__ = "Fire Rating Check"
 __author__ = "prajwalbkumar"
 
-
 # Imports
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
@@ -44,7 +43,7 @@ class DoorSelectionFilter(ISelectionFilter):
     def AllowReference(self, ref, point):
         return False
 
-try:      
+try:
     # MAIN SCRIPT
     door_collector = []
 
@@ -89,23 +88,25 @@ try:
         script.exit()
 
     unowned_elements = []
-    move_door_ids = []
-    elements_to_checkout = List[ElementId]()
+    if doc.IsWorkshared:
 
-    for element in door_collector:
-        elements_to_checkout.Add(element.Id)
+        move_door_ids = []
+        elements_to_checkout = List[ElementId]()
 
-    checkedout_door_collector = []
+        for element in door_collector:
+            elements_to_checkout.Add(element.Id)
 
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-    for element in door_collector: 
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-            checkedout_door_collector.append(element)
-        else:
-            unowned_elements.append(element)
+        checkedout_door_collector = []
+        
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        for element in door_collector:
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                checkedout_door_collector.append(element)
+            else:
+                unowned_elements.append(element)
 
-    door_collector = checkedout_door_collector
+        door_collector = checkedout_door_collector
 
     try:
         if door_collector[0].LookupParameter("Fire_Rating").AsString():
@@ -219,7 +220,7 @@ try:
 
     end_time = time.time()
     runtime = end_time - start_time
-            
+    
     run_result = "Tool ran successfully"
     if total_element_count:
         element_count = total_element_count
@@ -231,7 +232,7 @@ try:
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
 
 except Exception as e:
-  
+
     end_time = time.time()
     runtime = end_time - start_time
 
@@ -240,3 +241,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

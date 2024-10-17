@@ -812,3 +812,10 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

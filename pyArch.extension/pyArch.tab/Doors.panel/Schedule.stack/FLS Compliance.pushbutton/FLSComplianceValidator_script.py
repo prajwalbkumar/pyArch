@@ -389,23 +389,24 @@ try:
     failed_unequal_door_error_code = []
 
     unowned_elements = []
-    move_door_ids = []
-    elements_to_checkout = List[ElementId]()
+    if doc.IsWorkshared:
+        move_door_ids = []
+        elements_to_checkout = List[ElementId]()
 
-    for element in door_collector:
-        elements_to_checkout.Add(element.Id)
+        for element in door_collector:
+            elements_to_checkout.Add(element.Id)
 
-    checkedout_door_collector = []
+        checkedout_door_collector = []
 
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-    for element in door_collector: 
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-            checkedout_door_collector.append(element)
-        else:
-            unowned_elements.append(element)
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        for element in door_collector: 
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                checkedout_door_collector.append(element)
+            else:
+                unowned_elements.append(element)
 
-    door_collector = checkedout_door_collector
+        door_collector = checkedout_door_collector
 
     manual_time = manual_time + 600
     total_element_count = total_element_count + len(door_collector) 
@@ -913,3 +914,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

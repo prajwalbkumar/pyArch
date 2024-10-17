@@ -30,17 +30,23 @@ try:
     elements_to_checkout = List[ElementId]()
 
     if len(selection) > 0:
+
         for elementid in selection:
             elements_to_checkout.Add(elementid)
         
-        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        if doc.IsWorkshared:
+            WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
 
-        for elementid in selection:    
-            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+            for elementid in selection:    
+                worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+                if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                    selected_elements.append(doc.GetElement(elementid))
+                else:
+                    unowned_elements.append(doc.GetElement(elementid))
+        else:
+            for elementid in selection:    
                 selected_elements.append(doc.GetElement(elementid))
-            else:
-                unowned_elements.append(doc.GetElement(elementid))
+
         
     else:
         forms.alert("Select few elements first!", title = "Script Exiting", warn_icon = True)
@@ -138,3 +144,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

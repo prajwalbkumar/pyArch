@@ -5,7 +5,7 @@ __author__ = "prajwalbkumar"
 
 
 from Autodesk.Revit.DB import *
-from pyrevit import script
+from pyrevit import script, forms
 
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
@@ -96,3 +96,10 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )

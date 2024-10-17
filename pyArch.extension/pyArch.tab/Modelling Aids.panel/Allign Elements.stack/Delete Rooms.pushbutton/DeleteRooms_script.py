@@ -47,34 +47,47 @@ try:
                 not_enclosed_room_id.append(room.Id)
 
     unowned_elements = []
-    not_placed_rooms = []
-    elements_to_checkout = List[ElementId]()
 
-    for elementid in not_placed_room_id:
-        elements_to_checkout.Add(elementid)
+    if doc.IsWorkshared:
+        not_placed_rooms = []
+        elements_to_checkout = List[ElementId]()
 
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-    for elementid in not_placed_room_id: 
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        for elementid in not_placed_room_id:
+            elements_to_checkout.Add(elementid)
+
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        for elementid in not_placed_room_id: 
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                not_placed_rooms.append(doc.GetElement(elementid))
+            else:
+                unowned_elements.append(doc.GetElement(elementid))
+
+
+        not_enclosed_rooms = []
+        elements_to_checkout = List[ElementId]()
+
+        for elementid in not_enclosed_room_id:
+            elements_to_checkout.Add(elementid)
+
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+        for elementid in not_enclosed_room_id:  
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
+            if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+                not_enclosed_rooms.append(doc.GetElement(elementid))
+            else:
+                unowned_elements.append(doc.GetElement(elementid))
+
+    else:
+        not_placed_rooms = []
+        for elementid in not_placed_room_id: 
             not_placed_rooms.append(doc.GetElement(elementid))
-        else:
-            unowned_elements.append(doc.GetElement(elementid))
 
 
-    not_enclosed_rooms = []
-    elements_to_checkout = List[ElementId]()
-
-    for elementid in not_enclosed_room_id:
-        elements_to_checkout.Add(elementid)
-
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-    for elementid in not_enclosed_room_id:  
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        not_enclosed_rooms = []
+        for elementid in not_enclosed_room_id:  
             not_enclosed_rooms.append(doc.GetElement(elementid))
-        else:
-            unowned_elements.append(doc.GetElement(elementid))
+
 
     input1 = ""
     input2 = ""
@@ -162,3 +175,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )
