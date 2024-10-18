@@ -1,12 +1,31 @@
 # -*- coding: utf-8 -*-
 '''Assign elements to workset'''
 
-__title__ = "Assign Worksets"
+__Title__ = "Assign Worksets"
 __author__ = "prakritisrimal"
 
-from pyrevit import forms
+# Imports
+import math
+import os
+import time
+from datetime import datetime
+from Extract.RunData import get_run_data
 from Autodesk.Revit.DB import *
-doc = __revit__.ActiveUIDocument.Document
+from pyrevit import revit, forms, script
+from Autodesk.Revit.DB import WorksharingUtils
+from System.Collections.Generic import List
+from Autodesk.Revit.UI import TaskDialog, TaskDialogCommonButtons
+
+# Record the start time
+start_time = time.time()
+manual_time = 30
+
+script_dir = os.path.dirname(__file__)
+ui_doc = __revit__.ActiveUIDocument
+doc = __revit__.ActiveUIDocument.Document  # Get the Active Document
+app = __revit__.Application  # Returns the Revit Application Object
+rvt_year = int(app.VersionNumber)
+output = script.get_output()
 
 def get_model_category_names():
     """Retrieve a list of model categories that have elements in the model."""
@@ -33,9 +52,9 @@ def get_combined_category_names():
         # List of annotation category names to include
         annotation_categories = ['Grids', 'Levels', 'Scope Boxes', 'Matchlines']
         # List of category names to exclude
-        excluded_categories = ['Areas', 'Curtain Panels', 'Curtain Systems', 'Curtain Wall Mullions', 'Mass', 
+        excluded_categories = ['Areas', 'Curtain Panels', 'Analysis Display Style', 'Curtain Systems', 'Curtain Wall Mullions', 'Mass', 
                                 'Raster Images', 'HVAC Zones', 'Lines', 'Detail Items', 'Sun Path', 'Project Information', 'Cameras', 
-                                'Sheets', 'Materials', 'Material Assets', 'Legend Components', 'Pipe Segments', 'Rooms']
+                                'Sheets', 'Materials', 'Material Assets', 'Legend Components', 'Pipe Segments', 'Rooms', 'Exit Sign.dwg']
         
         # Include model categories
         for element in collector:
@@ -67,42 +86,157 @@ def get_workset_names():
         print("Error retrieving wall names: {}".format(e))
         return []
     
-def move_elements_to_workset(elements, workset_name):
+def move_elements_to_workset(elements, workset_name): 
     """Move elements to a specified workset."""
+
     try:
+        elements_new = []
+        standard_worksets = (
+            "Workset1, "
+            "AG_Signage, "
+            "AI_Casework, "
+            "AI_Ceiling, "
+            "AI_EL, "
+            "AI_Floor Finish, "
+            "AI_Furniture, "
+            "AI_Group, "
+            "AI_Internal, "
+            "AI_ME, "
+            "AI_Specialty Equipment, "
+            "AI_Wall Base, "
+            "AI_Wall Finishes, "
+            "AIX_Casework, "
+            "AIX_Ceiling, "
+            "AIX_EL, "
+            "AIX_Floor Finish, "
+            "AIX_Furniture, "
+            "AIX_Group, "
+            "AIX_Internal, "
+            "AIX_ME, "
+            "AIX_Specialty Equipment, "
+            "AIX_Wall Base, "
+            "AIX_Wall Finishes, "
+            "AR_Ceiling, "
+            "AR_EL, "
+            "AR_External, "
+            "AR_Floor, "
+            "AR_FLS, "
+            "AR_Furniture, "
+            "AR_Group, "
+            "AR_Internal, "
+            "AR_ME, "
+            "AR_Room Separator, "
+            "AR_Skin, "
+            "AR_ST, "
+            "ARC_Ceiling, "
+            "ARC_Columns, "
+            "ARC_External, "
+            "ARC_Furniture, "
+            "ARC_Groups, "
+            "ARC_Internal, "
+            "ARC_LifeSafety, "
+            "ARC_Rendering, "
+            "ARC_Skin, "
+            "ARX_Ceiling, "
+            "ARX_EL, "
+            "ARX_External, "
+            "ARX_Floor, "
+            "ARX_FLS, "
+            "ARX_Furniture, "
+            "ARX_Group, "
+            "ARX_Internal, "
+            "ARX_ME, "
+            "ARX_Room Separator, "
+            "ARX_ST, "
+            "ASG_Signage, "
+            "ASK_Skin, "
+            "ELE_Lighting, "
+            "MEC_HVAC, "
+            "PLD_Plumbing, "
+            "Scope Box, "
+            "Scope Boxes, "
+            "SGN_Signage, "
+            "Shared Levels and Grids, "
+            "STR_Concrete, "
+            "STR_Steel, "
+            "Z_Link_AI, "
+            "Z_Link_AR, "
+            "Z_Link_ARC, "
+            "Z_Link_CAD, "
+            "Z_Link_EL, "
+            "Z_Link_ELE, "
+            "Z_Link_ELV, "
+            "Z_Link_FPR, "
+            "Z_Link_ME, "
+            "Z_Link_MEC, "
+            "Z_Link_MF, "
+            "Z_Link_MH, "
+            "Z_Link_MP, "
+            "Z_Link_PLD, "
+            "Z_Link_ST, "
+            "Z_Link_STR, "
+            "Z_Link_URS"
+        )
+
+        for element in elements:
+            original_workset = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString()
+            
+            if original_workset.lower() in standard_worksets.lower() and original_workset.lower() != workset_name.lower():
+                elements_new.append((element, original_workset))  # Store element with its original workset
+
         worksets = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
         
         def CheckExisting(workset_name):
+            lower_workset_name = workset_name.lower()
             for workset in worksets:
-                if workset.Name == workset_name:
+                if workset.Name.lower() == lower_workset_name:
                     return True
             return False
 
         def RevitValue(workset_name):
+            lower_workset_name = workset_name.lower()
             for workset in worksets:
-                if workset.Name == workset_name:
+                if workset.Name.lower() == lower_workset_name:
                     return workset
 
         if not CheckExisting(workset_name):
-            print ('Workset "{}" not found.'.format(workset_name))
+            output.print_md('## ⚠️ Workset "{}" not found. ☹️'.format(workset_name))  # Markdown error heading
             return
-        
-        workset = RevitValue(workset_name)
-        
+
+        target_workset = RevitValue(workset_name)
+        report_data = []
+
         with Transaction(doc, 'Move Elements to Workset') as t:
             t.Start()
             moved_elements = 0
-            for element in elements:
+            
+            for element, original_workset in elements_new:
                 workset_param = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM)
                 if workset_param and not workset_param.IsReadOnly:
-                    workset_param.Set(workset.Id.IntegerValue)
+                    workset_param.Set(target_workset.Id.IntegerValue)
                     moved_elements += 1
+                    report_data.append((output.linkify(element.Id), original_workset, workset_name))  # Record the element ID, original and new workset
+
             t.Commit()
-            print('{} elements moved to workset "{}".'.format(moved_elements, workset_name))
+
+        if report_data:
+            # Print the header for report data
+            output.print_md("## ⚠️ WORKSETS UPDATED")  # Markdown Heading 2 
+            output.print_md("---")  # Markdown Line Break
+            output.print_md('{} Element(s) Moved To Workset "{}".'.format(moved_elements, workset_name))
+            
+            # Create a table to display the report data
+            output.print_table(table_data=report_data, columns=["ELEMENT ID", "BEFORE", "AFTER"])  # Print a Table
+            
+            print("\n\n")
+            output.print_md("---")  # Markdown Line Break
+            runtime = time.time() - start_time
+            print("Script runtime: {:.2f} seconds".format(runtime))
+           
     except Exception as e:
         print ('Error moving elements to workset: {}'.format(e))
 
-def process (selected_category_names, selected_option, workset_name, doc):
+def process (selected_option, selected_trade_option, selected_category_names, workset_name, doc):
     """Process selected categories and move elements to appropriate worksets."""
     try:
         def get_elements(category):
@@ -115,14 +249,7 @@ def process (selected_category_names, selected_option, workset_name, doc):
             return list(import_instances) if import_instances else []
         
         if selected_option == 'DAR':
-            trade_ops = ['Architecture', 'Interior', 'Signage']
-            selected_trade_option = forms.SelectFromList.show (
-            trade_ops,
-            multiselect=False, width=300, height=300,
-            title='Select the discipline for which the worksets have to be assigned',
-            default=trade_ops[0])  # Optionally, set a default selection  
-
-            if selected_trade_option == trade_ops[0]:
+            if selected_trade_option == 'Architecture':
                 if 'Grids' in selected_category_names:
                     grids = get_elements(BuiltInCategory.OST_Grids)
                     if grids:
@@ -316,10 +443,72 @@ def process (selected_category_names, selected_option, workset_name, doc):
                     if shaft_opening:
                         move_elements_to_workset(shaft_opening, 'AR_Internal')
 
-                if 'Signage' in selected_category_names:
+                if 'Signage' in selected_category_names: 
                     signage = get_elements(BuiltInCategory.OST_Signage)
+
+                    # Define the names of the worksets
+                    signage_power_workset_name = 'AG_Signage_Power'
+                    signage_power_plus_data_workset_name = 'AG_Signage_Power + Data'
+                    signage_workset_name = 'AG_Signage'
+                    hidden_workset_name = 'AG_Hidden'  # Name of the hidden workset
+
+
+
+                    # Lists to categorize signage elements
+                    signage_power_elements = []
+                    signage_power_plus_data_elements = []
+                    no_value_signage = []
+
+                    # Iterate through each signage element
                     if signage:
-                        move_elements_to_workset(signage, 'AG_Signage')
+                        for element in signage:
+                            workset_param = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString()
+
+                            # If the element is in AG_Hidden, skip it
+                            if workset_param.lower()  == hidden_workset_name.lower():
+                                print("Skipping element ID: {} because it's in the AG_Hidden workset.".format(element.Id))
+                                continue  # Skip elements in the AG_Hidden workset
+
+
+                            # If the element is in AG_Hidden, skip it
+                            if workset_param.lower()  == signage_power_workset_name.lower():
+                                print("Skipping element ID: {} because it's in the AG_Signage_Power workset.".format(element.Id))
+                                continue  # Skip elements in the AG_Signage_Power workset
+
+
+                            # If the element is in AG_Hidden, skip it
+                            if workset_param.lower()  == signage_power_plus_data_workset_name.lower():
+                                print("Skipping element ID: {} because it's in the AG_Signage_Power + Data workset.".format(element.Id))
+                                continue  # Skip elements in the AG_Signage_Power + Data workset
+
+                            # Get the custom parameter "Signage Requirement" by name
+                            signage_requirement_param = element.LookupParameter("Sign_Requirement")  # Use the correct parameter name
+                            
+                            # Check the value of the Signage Requirement parameter
+                            signage_requirement_value = signage_requirement_param.AsString() if signage_requirement_param else None
+
+
+
+                            # Categorize elements based on the Signage Requirement value
+                            if signage_requirement_value is None or signage_requirement_value == "":
+                                # Move elements with no signage requirement to AG_Signage
+                                no_value_signage.append(element)
+                            elif signage_requirement_value == 'AG Signage Power':
+                                signage_power_elements.append(element)
+                            elif signage_requirement_value == 'AG Signage Power + Data':
+                                signage_power_plus_data_elements.append(element)
+
+                    # Move elements based on their categories
+                    if no_value_signage:
+                        move_elements_to_workset(no_value_signage, signage_workset_name)
+
+                    if signage_power_elements:
+                        move_elements_to_workset(signage_power_elements, signage_power_workset_name)
+
+                    if signage_power_plus_data_elements:
+                        move_elements_to_workset(signage_power_plus_data_elements, signage_power_plus_data_workset_name)
+
+
 
                 if 'Specialty Equipment' in selected_category_names:
                     spec_equip = get_elements(BuiltInCategory.OST_SpecialityEquipment)
@@ -367,7 +556,7 @@ def process (selected_category_names, selected_option, workset_name, doc):
                     if windows:
                         move_elements_to_workset(windows, 'AR_External')
             
-            if selected_trade_option == trade_ops[1]:
+            if selected_trade_option == 'Interior':
                 if 'Grids' in selected_category_names:
                     grids = get_elements(BuiltInCategory.OST_Grids)
                     if grids:
@@ -569,31 +758,29 @@ def process (selected_category_names, selected_option, workset_name, doc):
                     if windows:
                         move_elements_to_workset(windows, 'AI_Internal')
 
-            if selected_trade_option == trade_ops[2]:
-                elements = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()
-                for element in elements: 
-                    element_name = element.Name
-                    if 'Grids' in element_name:
+            if selected_trade_option == 'Signage':
+
+                    if 'Grids' in selected_category_names:
                         grids = get_elements(BuiltInCategory.OST_Grids)
                         if grids:
                             move_elements_to_workset (grids, 'Shared Levels and Grids')
 
-                    if 'Levels' in element_name:
+                    if 'Levels' in selected_category_names:
                         levels = get_elements(BuiltInCategory.OST_Levels)
                         if levels:
                             move_elements_to_workset (levels, 'Shared Levels and Grids')
                     
-                    if 'Scope Boxes' in element_name:
+                    if 'Scope Boxes' in selected_category_names:
                         scope_boxes = get_elements(BuiltInCategory.OST_VolumeOfInterest)
                         if scope_boxes:
                             move_elements_to_workset (scope_boxes, 'Scope Box')
                     
-                    if 'Matchline' in element_name:
+                    if 'Matchline' in selected_category_names:
                         matchline = get_elements (BuiltInCategory.OST_Matchline)
                         if matchline:
                             move_elements_to_workset (matchline, 'Scope Box')
 
-                    if 'RVT Links' in element_name:
+                    if 'RVT Links' in selected_category_names:
                         links = get_elements(BuiltInCategory.OST_RvtLinks)
                         if links:
                             for link in links:
@@ -614,18 +801,76 @@ def process (selected_category_names, selected_option, workset_name, doc):
                                     move_elements_to_workset([link], 'Z_Link_MH')
                                 elif "URS" in link_name:
                                     move_elements_to_workset([link], 'Z_Link_URS')
-                    else:
-                        move_elements_to_workset (element, 'AG_Signage')
+
+                    if 'Signage' in selected_category_names: 
+                        signage = get_elements(BuiltInCategory.OST_Signage)
+
+                        # Define the names of the worksets
+                        signage_power_workset_name = 'AG_Signage_Power'
+                        signage_power_plus_data_workset_name = 'AG_Signage_Power + Data'
+                        signage_workset_name = 'AG_Signage'
+                        hidden_workset_name = 'AG_Hidden'  # Name of the hidden workset
+
+                        # Lists to categorize signage elements
+                        signage_power_elements = []
+                        signage_power_plus_data_elements = []
+                        no_value_signage = []
+
+                        # Iterate through each signage element
+                        if signage:
+                            for element in signage:
+                                workset_param = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString()
+
+
+
+                                # If the element is in AG_Hidden, skip it
+                                if workset_param.lower()  == hidden_workset_name.lower():
+                                    print("Skipping element ID: {} because it's in the AG_Hidden workset.".format(element.Id))
+                                    continue  # Skip elements in the AG_Hidden workset
+
+
+                                # If the element is in AG_Hidden, skip it
+                                if workset_param.lower()  == signage_power_workset_name.lower():
+                                    print("Skipping element ID: {} because it's in the AG_Signage_Power workset.".format(element.Id))
+                                    continue  # Skip elements in the AG_Signage_Power workset
+
+
+                                # If the element is in AG_Hidden, skip it
+                                if workset_param.lower()  == signage_power_plus_data_workset_name.lower():
+                                    print("Skipping element ID: {} because it's in the AG_Signage_Power + Data workset.".format(element.Id))
+                                    continue  # Skip elements in the AG_Signage_Power + Data workset
+
+                                # Get the custom parameter "Signage Requirement" by name
+                                signage_requirement_param = element.LookupParameter("Sign_Requirement")  # Use the correct parameter name
+                                
+                                # Check the value of the Signage Requirement parameter
+                                signage_requirement_value = signage_requirement_param.AsString() if signage_requirement_param else None
+
+
+
+                                # Categorize elements based on the Signage Requirement value
+                                if signage_requirement_value is None or signage_requirement_value == "":
+                                    # Move elements with no signage requirement to AG_Signage
+                                    no_value_signage.append(element)
+                                elif signage_requirement_value == 'AG Signage Power':
+                                    signage_power_elements.append(element)
+                                elif signage_requirement_value == 'AG Signage Power + Data':
+                                    signage_power_plus_data_elements.append(element)
+
+                        # Move elements based on their categories
+                        if no_value_signage:
+                            move_elements_to_workset(no_value_signage, signage_workset_name)
+
+                        if signage_power_elements:
+                            move_elements_to_workset(signage_power_elements, signage_power_workset_name)
+
+                        if signage_power_plus_data_elements:
+                            move_elements_to_workset(signage_power_plus_data_elements, signage_power_plus_data_workset_name)
+
 
         if selected_option == 'DAEP':
-            trade_ops = ['Architecture', 'Interior', 'Signage']
-            selected_trade_option = forms.SelectFromList.show (
-            trade_ops,
-            multiselect=False, width=300, height=300,
-            title='Select the discipline for which the worksets have to be assigned',
-            default=trade_ops[0])  # Optionally, set a default selection  
 
-            if selected_trade_option == trade_ops[0]:
+            if selected_trade_option == 'Architecture':
                 if 'Grids' in selected_category_names:
                     grids = get_elements(BuiltInCategory.OST_Grids)
                     if grids:
@@ -870,7 +1115,7 @@ def process (selected_category_names, selected_option, workset_name, doc):
                     if windows:
                         move_elements_to_workset(windows, 'ARX_External')
             
-            if selected_trade_option == trade_ops[1]:
+            if selected_trade_option == 'Interior':
                 if 'Grids' in selected_category_names:
                     grids = get_elements(BuiltInCategory.OST_Grids)
                     if grids:
@@ -1072,31 +1317,29 @@ def process (selected_category_names, selected_option, workset_name, doc):
                     if windows:
                         move_elements_to_workset(windows, 'AIX_Internal')
 
-            if selected_trade_option == trade_ops[2]:
-                elements = FilteredElementCollector(doc).WhereElementIsNotElementType().ToElements()
-                for element in elements: 
-                    element_name = element.Name
-                    if 'Grids' in element_name:
+            if selected_trade_option == 'Signage':
+
+                    if 'Grids' in selected_category_names:
                         grids = get_elements(BuiltInCategory.OST_Grids)
                         if grids:
                             move_elements_to_workset (grids, 'Shared Levels and Grids')
 
-                    if 'Levels' in element_name:
+                    if 'Levels' in selected_category_names:
                         levels = get_elements(BuiltInCategory.OST_Levels)
                         if levels:
                             move_elements_to_workset (levels, 'Shared Levels and Grids')
                     
-                    if 'Scope Boxes' in element_name:
+                    if 'Scope Boxes' in selected_category_names:
                         scope_boxes = get_elements(BuiltInCategory.OST_VolumeOfInterest)
                         if scope_boxes:
                             move_elements_to_workset (scope_boxes, 'Scope Box')
                     
-                    if 'Matchline' in element_name:
+                    if 'Matchline' in selected_category_names:
                         matchline = get_elements (BuiltInCategory.OST_Matchline)
                         if matchline:
                             move_elements_to_workset (matchline, 'Scope Box')
 
-                    if 'RVT Links' in element_name:
+                    if 'RVT Links' in selected_category_names:
                         links = get_elements(BuiltInCategory.OST_RvtLinks)
                         if links:
                             for link in links:
@@ -1398,12 +1641,12 @@ def process (selected_category_names, selected_option, workset_name, doc):
     except Exception as e:
         forms.alert("An error occurred: {}".format(e))
 
-def main():
+def main(): 
     if not doc.IsWorkshared:
         forms.alert("File not Workshared - Create a Workshared Model First!", title='Script Cancelled')
         return
     
-    # Prompt user for trade selection
+    # Prompt user for standards selection
     ops = ['DAR', 'DAEP', 'NEOM']
     selected_option = forms.SelectFromList.show(
         ops,
@@ -1414,36 +1657,41 @@ def main():
     if not selected_option:
         script.exit()
 
-    workset_names = get_workset_names()
-    # Fetch both model and annotation categories
-    category_names = get_combined_category_names()
-    if not category_names:
-        forms.alert('No categories found in the project.')
-        return
-    
-    selected_category_names = forms.SelectFromList.show(category_names, multiselect=True, title='Select Categories', default=category_names)
-
-    if selected_category_names:
-        process(selected_category_names, selected_option, workset_names, doc)
+    if selected_option:
+        workset_names = get_workset_names()
+        # Fetch both model and annotation categories
+        category_names = get_combined_category_names()
+        if not category_names:
+            forms.alert('No categories found in the project.')
+            return
         
-    if not selected_category_names:
-        forms.alert('No categories selected. Exiting script.')
-        return
+        # If 'NEOM' is selected, skip trade selection and go to categories
+        if selected_option == 'NEOM':
+            selected_category_names = forms.SelectFromList.show(category_names, multiselect=True, title='Select Categories', default=category_names)
 
-    # if selected_option == 'Architecture':
-    #     process_architecture(selected_category_names)
+            if selected_category_names:
+                process(selected_option, None, selected_category_names, workset_names, doc)
+            else:
+                forms.alert('No categories selected. Exiting script.')
+                return
 
-    # elif selected_option == 'Interior':
-    #     process_interior(selected_category_names)
+        else:  # For 'DAR' and 'DAEP', ask for trade selection
+            trade_ops = ['Architecture', 'Interior', 'Signage']
+            selected_trade_option = forms.SelectFromList.show(trade_ops, multiselect=False, title='Select trade', default=trade_ops[0])
 
-    # elif selected_option == 'Signage':
-    #     process_signage(doc)
+            if not selected_trade_option:
+                forms.alert('No trades selected. Exiting script.')
+                return
 
-    # elif selected_option == 'Exit':
-    #     print("Worksets are not created")
-    #     return  # Ensuring script ends after 'Exit' selection
+            selected_category_names = forms.SelectFromList.show(category_names, multiselect=True, title='Select Categories', default=category_names)
+
+            if selected_category_names:
+                process(selected_option, selected_trade_option, selected_category_names, workset_names, doc)
+            else:
+                forms.alert('No categories selected. Exiting script.')
+                return
+
+
 
 if __name__ == '__main__':
     main()
-
-
