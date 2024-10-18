@@ -35,7 +35,9 @@ tooltip:
     How-To:
 
 
-    1. Select target doors
+    0. This tool doesn't modify elements in a Model Group.
+    
+    1. Select target doors.
 
     2. Enter the minimum door-nib dimension.
 

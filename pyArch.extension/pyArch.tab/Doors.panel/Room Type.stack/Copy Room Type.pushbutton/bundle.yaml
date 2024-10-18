@@ -31,6 +31,8 @@ tooltip:
     How-To:
 
 
+    0. This tool doesn't modify elements in a Model Group.
+    
     1. Fill the "Room_Number" parameter for all doors using the DAR Door Add-In.
 
     2. Run the tool and select the Door Design Database when prompted.

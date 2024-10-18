@@ -29,6 +29,8 @@ tooltip:
     How-To:
 
 
+    0. This tool doesn't modify elements in a Model Group.
+    
     1. Select the relevant code.
 
     2. Click "Auto-Correct" to adjust door height and width to the correct values.

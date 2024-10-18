@@ -139,13 +139,30 @@ try:
     if not user_checks:
         script.exit()
 
-    # if doc.IsWorkshared:
-    #     ws_name = 
-    #     workset_collector = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
-    #     for workset in workset_collector:
-    #         ws_name.append(workset.Name)
-    #     for stair in stairs_collector:
-    #         if stair.
+    if doc.IsWorkshared:
+        ar_st_id = []
+        workset_collector = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
+        for workset in workset_collector:
+            if "AR_ST" == workset.Name:
+                ar_st_id = workset.Id
+
+        stair_in_st = []
+
+        if ar_st_id:
+            for stair in stairs_collector:
+                if stair.WorksetId == ar_st_id:
+                    stair_in_st.append(stair)
+            
+            if stair_in_st:
+                alert_options = forms.alert("There are stairs in AR_ST Workset\n"
+                            "Would you like to include them in the checks?",
+                            title="{} - ST Warning Alert".format(__title__), warn_icon=False, options=["Include AR_ST Stairs", "Do not Include"])
+                if alert_options == "Do not Include":
+                    listed_stairs = []
+                    for stair in stairs_collector:
+                        if not stair.WorksetId == ar_st_id:
+                            listed_stairs.append(stair)
+                    stairs_collector = listed_stairs
 
     if user_code == code[0]:
         tread_min = 280
@@ -1098,3 +1115,11 @@ except Exception as e:
     element_count = 0
     
     get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    forms.alert(
+        "An error has occurred.\n"
+        "Please reach out to the author.\n\n"
+        "Author - {}.".format(__author__),
+        title="{} - Script Terminated".format(__title__),
+        warn_icon=True
+    )
