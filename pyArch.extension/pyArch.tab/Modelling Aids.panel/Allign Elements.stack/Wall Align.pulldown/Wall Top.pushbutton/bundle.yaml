@@ -10,9 +10,9 @@ title: "Wall Top"
 
 tooltip:   
   en_us: >-
-    Version   =   0.1.0
+    Version   =   0.3.1
     
-    Date       =   20.09.2024
+    Date       =   10.10.2024
 
     ________________________________________________________________
     
@@ -28,23 +28,28 @@ tooltip:
     How-To:
 
 
-    1. Click on the tool.
+    1. Either Select the Walls and then Click on the tool or Click on the tool.
 
-    2. Select the Discipline: Architecture or Interior.
+    2. Select Walls by their Type Name in the Entire Project or Custom Select Walls. 
 
-    3. Select the SC/ST link file.
+    3. Select the Discipline: Architecture or Interior.
 
-    4. Select the wall types to align the tops.
+    4. Select the SC/ST link file.
+
 
     ________________________________________________________________
     
     
     Changelog:
     
-    
+    - [10.10.2024] v0.3.1 Option to select walls added 
+
     - [19.08.2024] v0.3.0 Aligns to ceiling when Interior is selected.
+
     - [14.08.2024] v0.2.0 Added checks for attic slabs and parapet walls.
+
     - [08.08.2024] v0.1.0 Aligns to floor and beam bottom.
+    
     - [29.07.2024] v0.x.x Early development.
     
     ________________________________________________________________
@@ -54,8 +59,8 @@ highlight: updated
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/modelling-aids/wall-allign/wall-top"
 
-author: Prakriti Srimal
+#author: Prakriti Srimal
 
-# authors:
-#   - Prakriti Srimal
-#   - Prajwal B Kumar
+authors:
+  - Prakriti Srimal
+  - Prajwal B Kumar
