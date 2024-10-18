@@ -122,6 +122,7 @@ try:
                                 "Run the tool after creating a staircase", title = "Script Exiting", warn_icon = True)
         script.exit()
 
+
     # Relevant Codes
     code = ["NFPA", "IBC", "SBC", "DCD"]
 
@@ -137,6 +138,14 @@ try:
 
     if not user_checks:
         script.exit()
+
+    # if doc.IsWorkshared:
+    #     ws_name = 
+    #     workset_collector = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
+    #     for workset in workset_collector:
+    #         ws_name.append(workset.Name)
+    #     for stair in stairs_collector:
+    #         if stair.
 
     if user_code == code[0]:
         tread_min = 280
