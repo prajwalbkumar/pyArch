@@ -4,41 +4,26 @@
 __title__ = "Wall Base"
 __author__ = "prakritisrimal"
 
+from pyrevit import script, forms, revit
 from Autodesk.Revit.DB import *
-from pyrevit import revit, forms, script
+from Autodesk.Revit.UI import *
+from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
 from System.Collections.Generic import List
+
 output = script.get_output()
+doc = __revit__.ActiveUIDocument.Document
+ui_doc = __revit__.ActiveUIDocument
 
-doc = revit.doc
-
-def get_wall_names():
-    """Retrieve a list of wall names available in the model."""
-    try:
-        collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
-        unique_wall_names = set()
-        for wall in collector:
-            wall_name = wall.Name
-            if wall_name:
-                unique_wall_names.add(wall_name)
-                sorted_wall_names = sorted(unique_wall_names)
-        return list(sorted_wall_names)
-    except Exception as e:
-        forms.alert('Error retrieving wall names: {}'.format(e))
-        return []
-
-def extract_walls_from_groups(elements):
-    """Extract walls from groups if they are part of a group."""
-    walls = []
-    for elem in elements:
-        if isinstance(elem, Group):
-            for group_elem in elem.GroupMembers:
-                if isinstance(group_elem, Wall):
-                    walls.append(group_elem)
-        else:
-            if isinstance(elem, Wall):
-                walls.append(elem)
-    return walls
-
+# Define a selection filter class for walls
+class WallSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Walls):
+            return True
+        return False
+    
+    def AllowReference(self, ref, point):
+        return False
+    
 def get_cl_and_ffl_levels(levels):
     """Identify Concrete Levels (CL) and Floor Finish Levels (FFL) from levels."""
     cl_levels = {}
@@ -150,7 +135,7 @@ def set_base_offset_for_wf_walls(walls, movement_direction):
         base_offset_skipped_data = []
 
         if "WF" in wall_name:
-            if movement_direction == 'CL to FFL':
+            if movement_direction == 'Host Wall on FFL':
                 if base_offset_param:
                     # Check if the parameter is read-only
                     if base_offset_param.IsReadOnly:
@@ -203,9 +188,8 @@ def set_base_offset_for_wf_walls(walls, movement_direction):
 
     return walls_updated, walls_not_moved
 
-def move_walls_based_on_direction(movement_direction, selected_wall_names):
+def move_walls_based_on_direction(movement_direction, target_walls):
     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
-    walls = extract_walls_from_groups(walls)  # Extract walls from groups
     levels = FilteredElementCollector(doc).OfClass(Level).ToElements()
 
     if not walls:
@@ -215,7 +199,7 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         forms.alert('No levels found in the project.')
         return
 
-    walls = [wall for wall in walls if wall.Name in selected_wall_names]
+    walls = [wall for wall in target_walls]
     cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
     level_pairs = create_level_pairs(cl_levels, ffl_levels)
     level_pairs = create_level_pairs(cl_levels, ffl_levels)
@@ -225,40 +209,6 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
     update_base_offset(walls)
     walls_not_moved = []
     walls_updated = 0  # Counter for updated walls
-
-    # for elements that we don't have ownership for
-    collected_elements = walls #List of Elements that the Tool Targets
-    owned_elements = []
-    unowned_elements = []
-    elements_to_checkout = List[ElementId]()
-
-    for elementid in collected_elements:
-        elements_to_checkout.Add(elementid)
-
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-
-    for elementid in collected_elements:    
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, elementid)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-            owned_elements.append(doc.GetElement(elementid))
-        else:
-            unowned_elements.append(doc.GetElement(elementid))
-
-    if unowned_elements:
-        unowned_element_data = []
-        for element in unowned_elements:
-            try:
-                unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
-            except:
-                pass
-
-        output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
-        output.print_md("---") # Markdown Line Break
-        output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
-        output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
-        print("\n\n")
-        output.print_md("---") # Markdown Line Break
-
 
     with Transaction(doc, 'Move Walls Based on Direction') as txn:
         try:
@@ -271,10 +221,13 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
                 wall_level = doc.GetElement(wall_level_id)
                 wall_type = doc.GetElement(wall.WallType.Id)
                 unc_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
+                base_offset_param = wall.LookupParameter("Base Offset").AsDouble()
 
                 if wall_type and wall_type.FamilyName == 'Curtain Wall':
                     print("Warning: Wall {} (ID: {}) is a curtain wall. Moving the wall might have changed the divisions of the panels.".format(wall_name, output.linkify(wall.Id)))
-                    
+
+
+
                 if wall_level:
                     wall_level_name = wall_level.Name if wall_level.Name else "Unknown Level"
                     if movement_direction == 'Host Wall on FFL':
@@ -357,48 +310,109 @@ def move_walls_based_on_direction(movement_direction, selected_wall_names):
         output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
         output.print_md("---")
 
-        # for wall_name, wall_id in walls_not_moved:
-        #     print("Wall Name {} (ID: {}) was not moved.".format(wall_name, output.linkify(wall_id)))
-    
-    # Print the number of walls that were successfully updated
-    # print("Number of walls successfully updated: {}".format(walls_updated))
-
-
-# def check_wall_heights():
-#     """Check walls with unconnected height greater than 10,000 mm and print warnings."""
-#     walls = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
-    
-#     if not walls:
-#         forms.alert('No walls found in the project.')
-#         return
-    
-#     high_walls = []
-    
-#     for wall in walls:
-#         try:
-#             unconnected_height_param = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM)
-#             if unconnected_height_param:
-#                 height_mm = unconnected_height_param.AsDouble() * 304.8  # Convert feet to millimeters
-                
-#                 if height_mm > 10000:
-#                     high_walls.append((wall.Name, wall.Id, height_mm))
-#         except Exception as e:
-#             print('Error checking height for wall ID {}: {}'.format(wall.Id, e))
-    
-#     if high_walls:
-#         forms.alert('The following walls have an unconnected height greater than 10,000 mm:')
-#         for wall_name, wall_id, height_mm in high_walls:
-#             print("Wall Name: {} (ID: {}) - Height: {} mm".format(wall_name, output.linkify(wall_id), height_mm))
-#     else:
-#         print("No walls found with unconnected height greater than 10,000 mm.")
 
 def main():
-    wall_names = get_wall_names()
-    
-    if not wall_names:
-        forms.alert('No wall names found in the project.')
-        return
-    
+    target_walls = []
+
+    selection = ui_doc.Selection.GetElementIds()
+    if len(selection) > 0:
+        for id in selection:
+            element = doc.GetElement(id)
+            try:
+                if element.LookupParameter("Category").AsValueString() == "Walls":
+                    target_walls.append(element)
+            except:
+                continue
+
+    else:
+        #Custom selection 
+        selection_options = forms.alert("This Tool Aligns Wall Base.",
+                                        title="Align Wall Base - Select Walls", 
+                                        warn_icon=False, 
+                                        options=["Select All Walls", "Select Specific Walls"])
+
+        if not selection_options:
+            script.exit()
+
+        elif selection_options == "Select All Walls":
+
+            unique_wall_names = set()
+            wall_type_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()
+
+            for wall_type in wall_type_collector:
+                wall_name = wall_type.Name
+                if wall_name:
+                    unique_wall_names.add(wall_name)
+
+            if not unique_wall_names:
+                #forms.alert("No walls found in the model. Exiting script.")
+                script.exit()
+
+            sorted_wall_names = sorted(unique_wall_names)
+            
+            wall_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()
+            
+            selected_wall_names = forms.SelectFromList.show(sorted_wall_names, multiselect=True, title='Select Walls to Align')
+            if not selected_wall_names:
+                script.exit()
+
+            for wall in wall_collector:
+                if wall.Name in selected_wall_names:
+                    target_walls.append(wall)
+
+        else:
+            # Prompt user to select walls
+            try:
+                choices = ui_doc.Selection
+                selected_elements = choices.PickObjects(ObjectType.Element, WallSelectionFilter(), "Select walls only")
+                
+                for selected_element in selected_elements:
+                    wall = doc.GetElement(selected_element.ElementId)
+                    target_walls.append(wall)
+
+            except:
+                script.exit()
+
+    # Filter out not owned element
+    collected_elements = target_walls  #List of Elements that the Tool Targets
+    owned_elements = []
+    unowned_elements = []
+    elements_to_checkout = List[ElementId]()
+
+    for element in collected_elements:
+        elements_to_checkout.Add(element.Id)
+
+    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+
+    for element in collected_elements:    
+        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+            owned_elements.append(element)
+        else:
+            unowned_elements.append(element)
+
+    checkedout_target_walls = owned_elements
+    skipped_data = []
+    target_walls = []
+
+    # Filter out walls with Profile
+    for wall in checkedout_target_walls:
+        try:
+            if int(wall.SketchId.ToString()) > 0: # Filtering out Walls with profiles
+                skipped_wall_data = [
+                    output.linkify(wall.Id),
+                    wall.Name,
+                    wall.LookupParameter("Unconnected Height").AsValueString(),
+                    wall.LookupParameter("Base Constraint").AsValueString(),
+                    "WALL WITH PROFILE"
+                    ]
+                skipped_data.append(skipped_wall_data)
+                continue
+            target_walls.append(wall)
+        except:
+            continue
+
+ 
     movement_direction = forms.SelectFromList.show(
         ['Host Wall on FFL', 'Host Wall on CL'],
         multiselect=False,
@@ -409,18 +423,8 @@ def main():
         script.exit()
         return
     
-    #movement_direction = 'CL to FFL' if 'Host Wall on FFL' in movement_direction else 'Host Wall on CL'
+    move_walls_based_on_direction(movement_direction, target_walls)
     
-    selected_wall_names = forms.SelectFromList.show(wall_names, multiselect=True, title='Select Wall Names', default=wall_names)
-    
-    if not selected_wall_names:
-        script.exit()
-        return
-    
-    move_walls_based_on_direction(movement_direction, selected_wall_names)
-    
-    # Check for walls with unconnected height greater than 10,000 mm
-    #check_wall_heights()
 
 if __name__ == '__main__':
     main()

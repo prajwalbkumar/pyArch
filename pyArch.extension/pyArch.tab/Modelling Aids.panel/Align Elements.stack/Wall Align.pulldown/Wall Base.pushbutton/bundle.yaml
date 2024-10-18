@@ -10,9 +10,9 @@ title: "Wall Base"
 
 tooltip:   
   en_us: >-
-    Version   =   0.1.0
+    Version   =   0.2.0
     
-    Date       =   20.09.2024
+    Date       =   10.10.2024
 
     ________________________________________________________________
     
@@ -39,7 +39,8 @@ tooltip:
     
     Changelog:
     
-    
+    - [10.10.2024] v0.1.1 Option to select walls added 
+
     - [20.09.2024] v0.1.0 Host Walls
 
     - [27.08.2024] v0.x.x Early Development
