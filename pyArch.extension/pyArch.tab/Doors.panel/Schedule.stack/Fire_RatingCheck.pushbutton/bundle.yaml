@@ -29,6 +29,8 @@ tooltip:
     How-To:
 
 
+    0. This tool doesn't modify elements in a Model Group.
+    
     1. Ensure all walls have a fire rating. If no rating is needed, set it to 0.
 
     2. Run the tool.
