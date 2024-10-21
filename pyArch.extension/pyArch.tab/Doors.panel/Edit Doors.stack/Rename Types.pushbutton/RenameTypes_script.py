@@ -42,11 +42,14 @@ try:
     total_element_count = total_element_count + len(total_door) 
 
     for door in all_doors:
-
-        door_width = door.LookupParameter("Width").AsValueString()
-        door_height = door.LookupParameter("Height").AsValueString()
-        leaf_finish = door.LookupParameter("Leaf_Face_Finish").AsValueString()
-        frame_finish = door.LookupParameter("Frame_Face_Finish").AsValueString()
+        try:
+            door_width = door.LookupParameter("Width").AsValueString()
+            door_height = door.LookupParameter("Height").AsValueString()
+            leaf_finish = door.LookupParameter("Leaf_Face_Finish").AsValueString()
+            frame_finish = door.LookupParameter("Frame_Face_Finish").AsValueString()
+        except:
+            failed_data.append([door.FamilyName.upper(), door.LookupParameter("Type Name").AsValueString().upper(), "NONE"])
+            continue
 
         new_name = door_width + "X" + door_height + "-" + leaf_finish + "-" + frame_finish
         
