@@ -43,8 +43,8 @@ try:
 
     for door in all_doors:
         try:
-            door_width = door.LookupParameter("Width").AsValueString()
-            door_height = door.LookupParameter("Height").AsValueString()
+            door_width = str(int(door.LookupParameter("Width").AsValueString()))
+            door_height = str(int(door.LookupParameter("Height").AsValueString()))
             leaf_finish = door.LookupParameter("Leaf_Face_Finish").AsValueString()
             frame_finish = door.LookupParameter("Frame_Face_Finish").AsValueString()
         except:

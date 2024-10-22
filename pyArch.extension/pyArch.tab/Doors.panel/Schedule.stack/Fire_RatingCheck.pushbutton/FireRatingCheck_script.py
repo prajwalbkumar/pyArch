@@ -170,13 +170,13 @@ try:
                 else:
                     door_room_number = "NONE"
 
-                failed_data.append([output.linkify(door.Id), door_level, door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("Fire_Rating").AsString(), str(int(int(hosted_wall_rating.AsString())*0.75))])
+                failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("Fire_Rating").AsString(), str(int(int(hosted_wall_rating.AsString())*0.75))])
 
         if report == "Show Report":
             output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
             output.print_md("---") # Markdown Line Break
             output.print_md("❌ Some issues could not be resolved. Refer to the **Table Report** below for reference")  # Print a Line
-            output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "HOST WALL RATING", "CURRENT RATING", "CORRECT RATING"]) # Print a Table
+            output.print_table(table_data=failed_data, columns=["ELEMENT ID", "MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER", "HOST WALL RATING", "CURRENT RATING", "CORRECT RATING"]) # Print a Table
             print("\n\n")
             output.print_md("---") # Markdown Line Break
 
