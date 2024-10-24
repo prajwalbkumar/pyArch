@@ -133,7 +133,7 @@ try:
                     if hosted_wall_rating.AsString() == "" or hosted_wall_rating.AsString() == "0":
                         continue
                     else:
-                        if door_rating_param.AsString() == str(int(int(hosted_wall_rating.AsString())*0.75)):
+                        if door_rating_param.AsString() == str(int(int(hosted_wall_rating.AsString()) - 15)):
                             continue
                         else:
                             failed_doors.append(door)
