@@ -144,10 +144,13 @@ try:
 
         for door in failed_doors:
                 hosted_wall_rating = door.Host.LookupParameter("Fire_Rating")
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
+                if door.LookupParameter("Mark"):
+                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = door.LookupParameter("Mark").AsString().upper()
                 else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
+                    door_mark = "NONE"
                 
                 if door.LookupParameter("Level"):
                     door_level = door.LookupParameter("Level").AsValueString().upper()

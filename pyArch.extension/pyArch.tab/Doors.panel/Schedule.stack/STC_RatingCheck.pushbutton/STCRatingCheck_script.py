@@ -145,25 +145,34 @@ try:
 
         for door in failed_doors:
                 hosted_wall_rating = door.Host.LookupParameter("STC_Rating")
-                if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
-                    door_mark = "NONE"
+                if door.LookupParameter("Mark"):
+                    if not door.LookupParameter("Mark").HasValue or door.LookupParameter("Mark").AsString() == "": 
+                        door_mark = "NONE"
+                    else:
+                        door_mark = door.LookupParameter("Mark").AsString().upper()
                 else:
-                    door_mark = door.LookupParameter("Mark").AsString().upper()
+                    door_mark = "NONE"
 
                 if door.LookupParameter("Level"):
                     door_level = door.LookupParameter("Level").AsValueString().upper()
                 else:
                     door_level = "NONE"
-                    
-                if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
-                    door_room_name = "NONE"
-                else:
-                    door_room_name = door.LookupParameter("Room_Name").AsString().upper()
 
-                if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
-                    door_room_number = "NONE"
+                if door.LookupParameter("Room_Name"):
+                    if not door.LookupParameter("Room_Name").HasValue or door.LookupParameter("Room_Name").AsString() == "": 
+                        door_room_name = "NONE"
+                    else:
+                        door_room_name = door.LookupParameter("Room_Name").AsString().upper()
                 else:
-                    door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                    door_room_name = "NONE"
+                    
+                if door.LookupParameter("Room_Number"):
+                    if not door.LookupParameter("Room_Number").HasValue or door.LookupParameter("Room_Number").AsString() == "": 
+                        door_room_number = "NONE"
+                    else:
+                        door_room_number = door.LookupParameter("Room_Number").AsString().upper()
+                else:
+                    door_room_number = "NONE"
 
                 failed_data.append([output.linkify(door.Id), door_mark, door_level, door_room_name, door_room_number, hosted_wall_rating.AsString(), door.LookupParameter("STC_Rating").AsString(), str(int(int(hosted_wall_rating.AsString()) - 15))])
 
