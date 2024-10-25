@@ -316,7 +316,7 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            strl_param = floor.get_Parameter(BuiltInParameter.FLOOR_PARAM_IS_STRUCTURAL).AsBool()
+                            strl_param = floor.LookupParameter("Structural").AsBool()
                             if strl_param == True:
                                 move_elements_to_workset([floor], 'AR_ST')
                                 break
@@ -522,7 +522,7 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     if walls:
                         for wall in walls:
                             wall_type = wall.WallType
-                            strl_param = wall.get_Parameter(BuiltInParameter.WALL_STRUCTURAL_SIGNIFICANT).AsBool()
+                            strl_param = wall.LookupParameter("Structural").AsBool()
                             if strl_param == True:
                                 move_elements_to_workset([wall], 'AR_ST')
                                 break
@@ -922,7 +922,7 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            strl_param = floor.get_Parameter(BuiltInParameter.FLOOR_PARAM_IS_STRUCTURAL).AsBool()
+                            strl_param = floor.LookupParameter("Structural").AsBool()
                             if strl_param == True:
                                 move_elements_to_workset([floor], 'ARX_ST')
                                 break
@@ -1066,7 +1066,7 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     if walls:
                         for wall in walls:
                             wall_type = wall.WallType
-                            strl_param = wall.get_Parameter(BuiltInParameter.WALL_STRUCTURAL_SIGNIFICANT).AsBool()
+                            strl_param = wall.LookupParameter("Structural").AsBool()
                             if strl_param == True:
                                 move_elements_to_workset([wall], 'ARX_ST')
                                 break
