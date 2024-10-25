@@ -46,8 +46,8 @@ tooltip:
 
     ________________________________________________________________
 
-# highlight: new
-# highlight: updated
+highlight: new
+highlight: updated
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/assign-worksets"
 
