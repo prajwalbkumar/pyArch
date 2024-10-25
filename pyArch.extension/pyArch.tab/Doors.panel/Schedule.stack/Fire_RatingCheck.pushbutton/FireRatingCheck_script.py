@@ -123,20 +123,22 @@ try:
     total_element_count = total_element_count + len(door_collector) 
 
     for door in door_collector:
-        door_rating_param = door.LookupParameter("Fire_Rating")
+        try:
+            door_rating_param = door.LookupParameter("Fire_Rating")
 
-        if door_rating_param:
-            hosted_wall_rating = door.Host.LookupParameter("Fire_Rating")
-            if hosted_wall_rating:
-                if hosted_wall_rating.HasValue:
-                    if hosted_wall_rating.AsString() == "" or hosted_wall_rating.AsString() == "0":
-                        continue
-                    else:
-                        if door_rating_param.AsString() == str(int(int(hosted_wall_rating.AsString())*0.75)):
+            if door_rating_param:
+                hosted_wall_rating = door.Host.LookupParameter("Fire_Rating")
+                if hosted_wall_rating:
+                    if hosted_wall_rating.HasValue:
+                        if hosted_wall_rating.AsString() == "" or hosted_wall_rating.AsString() == "0":
                             continue
                         else:
-                            failed_doors.append(door)
-
+                            if door_rating_param.AsString() == str(int(int(hosted_wall_rating.AsString())*0.75)):
+                                continue
+                            else:
+                                failed_doors.append(door)
+        except:
+            continue
 
     if failed_doors:
         report = forms.alert("Door fire ratings require attentions", title="Door Fire Rating Missing", warn_icon=True, options=["Show Report","Auto-Fill Values"]) 
