@@ -27,9 +27,20 @@ try:
     selection = ui_doc.Selection.GetElementIds()
     selected_elements = []
     unowned_elements = []
+    model_group_collector = []
     elements_to_checkout = List[ElementId]()
+    buffer = []
 
     if len(selection) > 0:
+        for elementid in selection:
+            element = doc.GetElement(elementid)
+            if element.GroupId.IntegerValue > 0:
+                model_group_collector.append(element)
+                continue
+            else:
+                buffer.append(element)
+        
+        selection = buffer
 
         for elementid in selection:
             elements_to_checkout.Add(elementid)
