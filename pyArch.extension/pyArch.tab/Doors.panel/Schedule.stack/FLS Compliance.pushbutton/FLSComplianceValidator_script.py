@@ -252,6 +252,7 @@ class DoorSelectionFilter(ISelectionFilter):
 try:
     # MAIN SCRIPT
     door_collector = []
+    model_group_collector = []
 
     selection = ui_doc.Selection.GetElementIds()
     if len(selection) > 0:
@@ -259,7 +260,11 @@ try:
             element = doc.GetElement(id)
             try:
                 if element.LookupParameter("Category").AsValueString() == "Doors":
-                    door_collector.append(element)
+                    if element.GroupId.IntegerValue > 0:
+                        model_group_collector.append(element)
+                        continue
+                    else:
+                        door_collector.append(element)
             except:
                 continue
 
@@ -274,7 +279,13 @@ try:
             script.exit()
 
         elif selection_options == "Check All Doors":
-            door_collector = doors_in_document()
+            buffer = doors_in_document()
+            for door in buffer:
+                if door.GroupId.IntegerValue > 0:
+                    model_group_collector.append(door)
+                    continue
+                else:
+                    door_collector.append(door)
 
         else:
             # Prompt user to select doors
@@ -284,15 +295,24 @@ try:
                 
                 for selected_element in selected_elements:
                     door = doc.GetElement(selected_element.ElementId)
-                    door_collector.append(door)
+                    if door.GroupId.IntegerValue > 0:
+                        model_group_collector.append(door)
+                        continue
+                    else:
+                        door_collector.append(door)
 
             except:
                 script.exit()
 
-    if not door_collector:
+    if not door_collector and not model_group_collector:
         forms.alert("No doors found in the active document", title="Script Exiting", warn_icon=True)
         script.exit()
+    
+    if model_group_collector:
+        input_option = forms.alert("Doors in Model Groups will not be processed", title="Script Exiting", warn_icon=True)
 
+    if model_group_collector or not door_collector:
+        script.exit()
 
         
     minimum_door_nib = 100

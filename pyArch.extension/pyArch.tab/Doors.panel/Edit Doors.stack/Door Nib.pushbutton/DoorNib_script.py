@@ -23,7 +23,7 @@ total_element_count = 0
 script_dir = os.path.dirname(__file__)
 ui_doc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document # Get the Active Document
-app = __revit__.Application # Returns the Revit Application Object
+app = __revit__.Application # Returns the Revit Application Objects
 rvt_year = int(app.VersionNumber)
 output = script.get_output()
 
@@ -151,24 +151,28 @@ def update_doors(door_ids, mimimum_nib_dimension):
                 move_distance = abs(nib_calculation - mimimum_nib_dimension)
         
             move_ray_direction = ray_direction_sorted[0].Negate()
-            for i in range(1,len(rays_sorted)):
-                if ray_direction_sorted[i].X == move_ray_direction.X and ray_direction_sorted[i].Y == move_ray_direction.Y and ray_direction_sorted[i].Z == move_ray_direction.Z:
-                    if (door_proximities_sorted[i] - (rough_width / 2)) - move_distance >= mimimum_nib_dimension:
-                        # Do the shifting and stop the loop
-                        mid_point = rays_sorted[i].GetEndPoint(0)
-                        offset_point = mid_point + XYZ(move_ray_direction.X * move_distance, move_ray_direction.Y * move_distance, direction.Z)
+            try:
+                for i in range(1,len(rays_sorted)):
+                    if ray_direction_sorted[i].X == move_ray_direction.X and ray_direction_sorted[i].Y == move_ray_direction.Y and ray_direction_sorted[i].Z == move_ray_direction.Z:
+                        if (door_proximities_sorted[i] - (rough_width / 2)) - move_distance >= mimimum_nib_dimension:
+                            # Do the shifting and stop the loop
+                            mid_point = rays_sorted[i].GetEndPoint(0)
+                            offset_point = mid_point + XYZ(move_ray_direction.X * move_distance, move_ray_direction.Y * move_distance, direction.Z)
 
-                        old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
-                        new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
+                            old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
+                            new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
 
-                        door.Location.Move(new_location - old_location)
+                            door.Location.Move(new_location - old_location)
 
-                        run_log_code = run_log_code + "CODE A PASS "
-                        break
+                            run_log_code = run_log_code + "CODE A PASS "
+                            break
 
-                    else:
-                        run_log_code = run_log_code + "CODE A FAIL "
-                        break
+                        else:
+                            run_log_code = run_log_code + "CODE A FAIL "
+                            break
+            except:
+                run_log_code = run_log_code + "CODE A FAIL "
+                break
         
         elif nib_calculation > mimimum_nib_dimension:
             nib_calculation =  nib_calculation * 304.8
@@ -188,24 +192,28 @@ def update_doors(door_ids, mimimum_nib_dimension):
                 move_distance = abs(nib_calculation_difference) * 0.00328084
                 move_ray_direction = ray_direction_sorted[0].Negate()
             
-            for i in range(1,len(rays_sorted)):
-                if ray_direction_sorted[i].X == move_ray_direction.X and ray_direction_sorted[i].Y == move_ray_direction.Y and ray_direction_sorted[i].Z == move_ray_direction.Z:
-                    if (door_proximities_sorted[i] - (rough_width / 2)) - move_distance >= mimimum_nib_dimension:
-                        # Do the shifting and stop the loop
-                        mid_point = rays_sorted[i].GetEndPoint(0)
-                        offset_point = mid_point + XYZ(move_ray_direction.X * move_distance, move_ray_direction.Y * move_distance, direction.Z)
+            try:
+                for i in range(1,len(rays_sorted)):
+                    if ray_direction_sorted[i].X == move_ray_direction.X and ray_direction_sorted[i].Y == move_ray_direction.Y and ray_direction_sorted[i].Z == move_ray_direction.Z:
+                        if (door_proximities_sorted[i] - (rough_width / 2)) - move_distance >= mimimum_nib_dimension:
+                            # Do the shifting and stop the loop
+                            mid_point = rays_sorted[i].GetEndPoint(0)
+                            offset_point = mid_point + XYZ(move_ray_direction.X * move_distance, move_ray_direction.Y * move_distance, direction.Z)
 
-                        old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
-                        new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
+                            old_location = hosted_wall.Location.Curve.Project(mid_point).XYZPoint
+                            new_location = hosted_wall.Location.Curve.Project(offset_point).XYZPoint
 
-                        door.Location.Move(new_location - old_location)
+                            door.Location.Move(new_location - old_location)
 
-                        run_log_code = run_log_code + "CODE A PASS "
-                        break
+                            run_log_code = run_log_code + "CODE A PASS "
+                            break
 
-                    else:
-                        run_log_code = run_log_code + "CODE A FAIL "
-                        break
+                        else:
+                            run_log_code = run_log_code + "CODE A FAIL "
+                            break
+            except:
+                run_log_code = run_log_code + "CODE A FAIL "
+                break
 
 
             # TODO: SHIFT THE BELOW CODE TO THE DOOR ALLIGN TOOL
@@ -256,6 +264,8 @@ class DoorSelectionFilter(ISelectionFilter):
 try:
     # MAIN SCRIPT
     door_collector = []
+    model_group_collector = []
+
 
     selection = ui_doc.Selection.GetElementIds()
     if len(selection) > 0:
@@ -263,7 +273,11 @@ try:
             element = doc.GetElement(id)
             try:
                 if element.LookupParameter("Category").AsValueString() == "Doors":
-                    door_collector.append(element)
+                    if element.GroupId.IntegerValue > 0:
+                        model_group_collector.append(element)
+                        continue
+                    else:
+                        door_collector.append(element)
             except:
                 continue
 
@@ -288,13 +302,23 @@ try:
                 
                 for selected_element in selected_elements:
                     door = doc.GetElement(selected_element.ElementId)
-                    door_collector.append(door)
+                    if door.GroupId.IntegerValue > 0:
+                        model_group_collector.append(door)
+                        continue
+                    else:
+                        door_collector.append(door)
 
             except:
                 script.exit()
 
-    if not door_collector:
+    if not door_collector and not model_group_collector:
         forms.alert("No doors found in the active document", title="Script Exiting", warn_icon=True)
+        script.exit()
+    
+    if model_group_collector:
+        input_option = forms.alert("Doors in Model Groups will not be processed", title="Script Exiting", warn_icon=True)
+
+    if model_group_collector or not door_collector:
         script.exit()
 
     mimimum_nib_dimension = forms.ask_for_string(
@@ -307,7 +331,7 @@ try:
     if not mimimum_nib_dimension:
         script.exit()
 
-
+    
 
     doors_excluded = ["ACCESS PANEL", "CLOSEST DOOR", "BIFOLD", "SLIDING", "OPENING", "ROLLING SHUTTER", "REVOLVING"]
 

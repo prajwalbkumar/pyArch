@@ -126,7 +126,24 @@ try:
             script.exit()
         else:
             script.exit()
+    
+    model_group_collector = []
+    buffer = []
+    for door in door_collector:
+        if door.GroupId.IntegerValue > 0:
+            model_group_collector.append(door)
+            continue
+        else:
+            buffer.append(door)
 
+
+    if model_group_collector:
+        input_option = forms.alert("Doors in Model Groups will not be processed", title="Script Exiting", warn_icon=True)
+
+    if model_group_collector or not door_collector:
+        script.exit()
+    door_collector = buffer
+    
     unowned_elements = []
     if doc.IsWorkshared:
         move_door_ids = []
