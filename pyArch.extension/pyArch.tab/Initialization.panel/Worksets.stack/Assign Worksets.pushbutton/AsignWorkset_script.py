@@ -2,7 +2,7 @@
 '''Assign elements to workset'''
 
 __Title__ = "Assign Worksets"
-__author__ = "prakritisrimal"
+__author__ = "prakritisrimal, abhiramnair"
 
 # Imports
 import math
@@ -316,20 +316,12 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            floor_type = floor.FloorType
-                            if floor_type:
-                                compound_structure = floor_type.GetCompoundStructure()
-                                if compound_structure:
-                                    for layer in compound_structure.GetLayers():
-                                        material_id = layer.MaterialId
-                                        if material_id and material_id != ElementId.InvalidElementId:
-                                            material = doc.GetElement(material_id)
-                                            if material:
-                                                if any(keyword in material.Name for keyword in ['Concrete', 'Steel', 'ST']):
-                                                    move_elements_to_workset([floor], 'AR_ST')
-                                                    break
-                                                else:
-                                                    move_elements_to_workset([floor], 'AR_Floor')
+                            strl_param = floor.LookupParameter("Structural").AsBool()
+                            if strl_param == True:
+                                move_elements_to_workset([floor], 'AR_ST')
+                                break
+                            else:
+                                move_elements_to_workset([floor], 'AR_Floor')
 
                 if 'Fire Protection' in selected_category_names:
                     fps = get_elements(BuiltInCategory.OST_FireProtection)
@@ -530,23 +522,16 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     if walls:
                         for wall in walls:
                             wall_type = wall.WallType
-                            if wall_type:
-                                compound_structure = wall_type.GetCompoundStructure()
-                                if compound_structure:
-                                    for layer in compound_structure.GetLayers():
-                                        material_id = layer.MaterialId
-                                        if material_id and material_id != ElementId.InvalidElementId:
-                                            material = doc.GetElement(material_id)
-                                            if material:
-                                                if any(keyword in material.Name for keyword in ['Concrete', 'Steel', 'ST']):
-                                                    move_elements_to_workset([wall], 'AR_ST')
-                                                    break
-                                                elif 'Ext' in wall.Name:
-                                                    move_elements_to_workset([wall], 'AR_External')
-                                                elif 'Int' in wall.Name:
-                                                    move_elements_to_workset([wall], 'AR_Internal')
-                                                elif 'WS_Ext' in wall.Name:
-                                                    move_elements_to_workset([wall], 'AR_Skin')
+                            strl_param = wall.LookupParameter("Structural").AsBool()
+                            if strl_param == True:
+                                move_elements_to_workset([wall], 'AR_ST')
+                                break
+                            elif 'Ext' in wall.Name:
+                                move_elements_to_workset([wall], 'AR_External')
+                            elif 'Int' in wall.Name:
+                                move_elements_to_workset([wall], 'AR_Internal')
+                            elif 'WS_Ext' in wall.Name:
+                                move_elements_to_workset([wall], 'AR_Skin')
                             if 'CW' in wall.Name:
                                 move_elements_to_workset([wall], 'AR_Internal')
                                 continue 
@@ -937,20 +922,12 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            floor_type = floor.FloorType
-                            if floor_type:
-                                compound_structure = floor_type.GetCompoundStructure()
-                                if compound_structure:
-                                    for layer in compound_structure.GetLayers():
-                                        material_id = layer.MaterialId
-                                        if material_id and material_id != ElementId.InvalidElementId:
-                                            material = doc.GetElement(material_id)
-                                            if material:
-                                                if any(keyword in material.Name for keyword in ['Concrete', 'Steel', 'ST']):
-                                                    move_elements_to_workset([floor], 'ARX_ST')
-                                                    break
-                                                else:
-                                                    move_elements_to_workset([floor], 'ARX_Floor')
+                            strl_param = floor.LookupParameter("Structural").AsBool()
+                            if strl_param == True:
+                                move_elements_to_workset([floor], 'ARX_ST')
+                                break
+                            else:
+                                move_elements_to_workset([floor], 'ARX_Floor')
 
                 if 'Fire Protection' in selected_category_names:
                     fps = get_elements(BuiltInCategory.OST_FireProtection)
@@ -1089,23 +1066,16 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     if walls:
                         for wall in walls:
                             wall_type = wall.WallType
-                            if wall_type:
-                                compound_structure = wall_type.GetCompoundStructure()
-                                if compound_structure:
-                                    for layer in compound_structure.GetLayers():
-                                        material_id = layer.MaterialId
-                                        if material_id and material_id != ElementId.InvalidElementId:
-                                            material = doc.GetElement(material_id)
-                                            if material:
-                                                if any(keyword in material.Name for keyword in ['Concrete', 'Steel', 'ST']):
-                                                    move_elements_to_workset([wall], 'ARX_ST')
-                                                    break
-                                                elif 'Ext' in wall.Name:
-                                                    move_elements_to_workset([wall], 'ARX_External')
-                                                elif 'Int' in wall.Name:
-                                                    move_elements_to_workset([wall], 'ARX_Internal')
-                                                elif 'WS_Ext' in wall.Name:
-                                                    move_elements_to_workset([wall], 'ASK_Skin')
+                            strl_param = wall.LookupParameter("Structural").AsBool()
+                            if strl_param == True:
+                                move_elements_to_workset([wall], 'ARX_ST')
+                                break
+                            elif 'Ext' in wall.Name:
+                                move_elements_to_workset([wall], 'ARX_External')
+                            elif 'Int' in wall.Name:
+                                move_elements_to_workset([wall], 'ARX_Internal')
+                            elif 'WS_Ext' in wall.Name:
+                                move_elements_to_workset([wall], 'ASK_Skin')
                             if 'CW' in wall.Name:
                                 move_elements_to_workset([wall], 'ARX_Internal')
                                 continue 

@@ -35,6 +35,8 @@ tooltip:
     
     
     Changelog:
+
+    - [24.10.2024] v0.1.2  Condition for Structural Elements Updated
     
     - [17.10.2024] v0.1.1  Case for Custom Worksets Added
     
@@ -44,8 +46,8 @@ tooltip:
 
     ________________________________________________________________
 
-# highlight: new
-# highlight: updated
+highlight: new
+highlight: updated
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/assign-worksets"
 
@@ -54,3 +56,4 @@ help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization
 authors:
   - Prakriti Srimal
   - Astle James
+  - Abhiram Nair
