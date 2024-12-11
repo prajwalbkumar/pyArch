@@ -133,12 +133,11 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
         intersector.FindReferencesInRevitLinks = True
         for point in calculation_points:    
             for direction in directions:
-                result = intersector.FindNearest(XYZ(point.X, point.Y, (point.Z)), direction)
+                result = intersector.FindNearest(point, direction)
 
                 if not result: 
                     continue
                 proximity = (result.Proximity)
-                print(proximity)
                 door_proximities.append(proximity)
                 rays.append(Line.CreateBound(point, (point + XYZ(direction.X * proximity, direction.Y * proximity, direction.Z))))
                 ray_direction.append(direction)
@@ -149,10 +148,17 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
 
         if not door_proximities:
             continue
-
-        if round(door_proximities[0], 4) == round(door_proximities[1], 4) or round(door_proximities[2], 4) == round(door_proximities[3], 4):
-            run_log_code = run_log_code + "CODE NEUTRAL "
-            continue
+        if door_proximities > 1:
+            if round(door_proximities[0], 4) == round(door_proximities[1], 4):
+                run_log_code = run_log_code + "CODE NEUTRAL "
+                continue
+            else:
+                try:
+                    if round(door_proximities[2], 4) == round(door_proximities[3], 4):
+                        run_log_code = run_log_code + "CODE NEUTRAL "
+                        continue
+                except:
+                    pass
 
         # Pair the proximity values with their corresponding rays
         paired_proximity_rays = list(zip(door_proximities, rays, ray_direction))
