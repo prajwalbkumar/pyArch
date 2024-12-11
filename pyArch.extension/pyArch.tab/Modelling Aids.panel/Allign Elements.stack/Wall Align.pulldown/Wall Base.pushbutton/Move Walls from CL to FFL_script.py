@@ -8,7 +8,13 @@ from pyrevit import script, forms, revit
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import *
 from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
+from Extract.RunData import get_run_data
+import time
+from datetime import datetime
 from System.Collections.Generic import List
+# Record the start time
+start_time = time.time()
+manual_time = 10
 
 output = script.get_output()
 doc = __revit__.ActiveUIDocument.Document
@@ -281,9 +287,30 @@ def move_walls_based_on_direction(movement_direction, target_walls):
             walls_not_moved.extend(wf_walls_not_moved)
             
             txn.Commit()
+            # Record the end time
+            end_time = time.time()
+            runtime = end_time - start_time
+
+            run_result = "Tool ran successfully"
+            element_count = walls_updated
+            error_occured = "Nil"
+            get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
         except Exception as e:
+            forms.alert("An error occurred: {}".format(e))
+
+            #Record the end time and runtime
+            end_time = time.time()
+            runtime = end_time - start_time
+
+            # Log the error details
+            error_occured = "Error occurred: {}".format(str(e))
+            run_result = "Error"
+            element_count = 10
+
+            # Function to log run data in case of error
+            get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
             txn.RollBack()
-            forms.alert('Error during wall movement: {}'.format(e))
+            #forms.alert('Error during wall movement: {}'.format(e))
     wall_skipped_data = []
     if walls_not_moved:
         walls_not_moved_data = [ output.linkify(wall.Id),
