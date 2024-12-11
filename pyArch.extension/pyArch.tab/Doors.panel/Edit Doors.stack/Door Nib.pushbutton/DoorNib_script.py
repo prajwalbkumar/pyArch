@@ -118,6 +118,8 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
         hosted_wall = door.Host
         directions = []
 
+        run_log_code = ""
+        
         try:
             wall_direction = hosted_wall.Location.Curve.Direction.Normalize()
         except:
@@ -157,12 +159,17 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
         # Unzip the sorted pairs back into two separate lists
         door_proximities_sorted, rays_sorted, ray_direction_sorted = zip(*paired_proximity_rays)
 
+        if round(door_proximities_sorted[0], 4) == round(door_proximities_sorted[1], 4):
+            run_log_code = run_log_code + "CODE NEUTRAL "
+            continue
+
+
         # Convert the tuples back to lists, if needed
         door_proximities_sorted = list(door_proximities_sorted)
         rays_sorted = list(rays_sorted)
         ray_direction_sorted = list(ray_direction_sorted)
 
-        run_log_code = ""
+        
         
         # Check if the smallest proximity distance can accomodate for the increase in the door width
         rough_width = door.Symbol.LookupParameter("Rough Width").AsDouble()
@@ -263,10 +270,7 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
 
             #             else:
             #                 run_log_code = run_log_code + "CODE A FAIL "
-            #                 break
-
-
-           
+            #                 break         
 
         run_door_ids.append(id)
         run_message.append(run_log_code)
@@ -385,7 +389,6 @@ try:
 
     failed_data = []
     passed_data = []
-
 
     if not checked_move_door_ids:
         script.exit()
