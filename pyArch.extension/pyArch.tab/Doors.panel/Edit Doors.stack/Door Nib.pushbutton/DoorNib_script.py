@@ -92,8 +92,8 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
     except:
         pass
 
-    view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
-    view_analytical = doc.GetElement(view_analytical)
+    # view_analytical = analytical_view.Duplicate(ViewDuplicateOption.Duplicate)
+    # view_analytical = doc.GetElement(view_analytical)
     
     mimimum_nib_dimension = int(mimimum_nib_dimension) * 0.00328084
     run_door_ids = []
@@ -104,6 +104,7 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
         ray_direction = []
         calculation_points = []
         door = doc.GetElement(id)
+        # print(door.LookupParameter("Rough Height"))
 
         options = Options()
         options.IncludeNonVisibleObjects = True
@@ -113,7 +114,7 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
             for geometry in geometry_element:
                 if geometry.ToString() == "Autodesk.Revit.DB.NurbSpline":
                     spline_point = geometry.GetEndPoint(1)
-                    calculation_points.append(XYZ(spline_point.X, spline_point.Y, spline_point.Z))
+                    calculation_points.append(XYZ(spline_point.X, spline_point.Y, spline_point.Z + door.Symbol.LookupParameter("Rough Height").AsDouble()))
                     
         hosted_wall = door.Host
         directions = []
@@ -129,7 +130,7 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
         directions.append(wall_direction)
         directions.append(wall_direction.Negate())
 
-        intersector = ReferenceIntersector(view_analytical)
+        intersector = ReferenceIntersector(analytical_view)
         intersector.FindReferencesInRevitLinks = True
         for point in calculation_points:    
             for direction in directions:
@@ -284,7 +285,7 @@ def update_doors(door_ids, mimimum_nib_dimension, base):
     # Pair the proximity values with their corresponding rays
     run_log = list(zip(run_door_ids, run_message))
     doc.Delete(analytical_view.Id)
-    doc.Delete(view_analytical.Id)
+    # # doc.Delete(view_analytical.Id)
     return run_log
 
 # Define a selection filter class for doors
@@ -570,7 +571,8 @@ try:
                         door_room_number = "NONE"
 
                     clashing_data.append([output.linkify(doors[i].Id), door_mark, doors[i].LookupParameter("Level").AsValueString().upper(), door_room_name, door_room_number, "DOOR CLASH"])           
-
+    
+    print_exit = False
     # Display all list of failed doors, including unequal doors
     if passed_data:
         output.print_md("##✅ {} Completed. Instances Have Been Updated 😃" .format(__title__)) # Markdown Heading 2
@@ -583,6 +585,7 @@ try:
         output.print_md("---") # Markdown Line Break
         output.print_md("**PASS**  - Door Moved")
         output.print_md("---") # Markdown Line Break
+        print_exit = True
 
     if failed_data:
         output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
@@ -595,6 +598,7 @@ try:
         output.print_md("---") # Markdown Line Break
         output.print_md("**FAIL**  - Door could not be moved")
         output.print_md("---") # Markdown Line Break
+        print_exit = True
 
     if clashing_data:
         output.print_md("##⚠️ {} Completed. Instances Need Attention ☹️" .format(__title__)) # Markdown Heading 2
@@ -607,7 +611,9 @@ try:
         output.print_md("---") # Markdown Line Break
         output.print_md("**DOOR CLASH**  - Keep adjacent doors atleast {} mm apart." .format(door_minimum_clearance))
         output.print_md("---") # Markdown Line Break
-
+        print_exit = True
+    
+    
     if skipped_doors:
         failed_data = []
         for door in skipped_doors:
@@ -643,10 +649,7 @@ try:
         output.print_table(table_data=failed_data, columns=["ELEMENT ID","MARK", "LEVEL", "ROOM NAME", "ROOM NUMBER"]) # Print a Table
         print("\n\n")
         output.print_md("---") # Markdown Line Break
-
-    if not failed_data and not skipped_doors and not clashing_data:
-        output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
-        output.print_md("---") # Markdown Line Break
+        print_exit = True
 
     if unowned_elements:
         unowned_element_data = []
@@ -661,6 +664,11 @@ try:
         output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
         output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
         print("\n\n")
+        output.print_md("---") # Markdown Line Break
+        print_exit = True
+
+    if not print_exit:
+        output.print_md("##✅ {} Completed. No Issues Found 😃" .format(__title__)) # Markdown Heading 2
         output.print_md("---") # Markdown Line Break
 
     end_time = time.time()
