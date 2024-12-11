@@ -35,25 +35,21 @@ tooltip:
     
     
     Changelog:
+    
 
-    - [24.10.2024] v0.1.2  Condition for Structural Elements Updated
-    
-    - [17.10.2024] v0.1.1  Case for Custom Worksets Added
-    
     - [16.09.2024] v0.1.0  Assign Multiple Categories
 
     - [22.08.2024] v0.x.x  Early Development
 
     ________________________________________________________________
 
+ 
+# highlight: updated
+
+help_url: "https://darcairo.sharepoint.com/:u:/r/sites/DARC/SitePages/Assign-Worksets.aspx?csf=1&web=1&share=EczfTZeMc8JHmGf5g2DZbncBonbOiRWkxLS026mkKKIpLQ&e=aECU22"
 highlight: new
-highlight: updated
-
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/assign-worksets"
-
 # author: Full Name
 
 authors:
   - Prakriti Srimal
   - Astle James
-  - Abhiram Nair

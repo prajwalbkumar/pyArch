@@ -5,94 +5,119 @@
         WindowStartupLocation="CenterScreen"
         HorizontalContentAlignment="Center"
         Title="Create a new file" SizeToContent="Height" Width="450" 
-        MinHeight="300" MinWidth="450">
-    
-    <DockPanel Margin="10">
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        MinHeight="300" MinWidth="450"
+        >
 
-            <!-- Browse or select file path location -->
-            <DockPanel>
-                <Grid Margin="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/> 
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>    
-                        <RowDefinition Height="*" /> 
-                        <RowDefinition Height="Auto" /> 
-                    </Grid.RowDefinitions>
+        <DockPanel Margin="10">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
 
-                    <TextBlock x:Name="Description" FontSize="14" Text="Paste file path in text box or click on Browse button to select file path" TextWrapping="Wrap" Margin="10" Grid.Row="0" Grid.ColumnSpan="2"/>
-                    <TextBox x:Name="FolderPath" Height="25" Margin="10,4" IsReadOnly="False" Grid.Row="1" Grid.Column="0" VerticalContentAlignment="Center" Text ="P:\"/>
-                    <Button x:Name="BrowseButton" Content="Browse" Width="75" Height="25" Margin="10,4" Grid.Row="1" Grid.Column="1" />
-                </Grid>
-            </DockPanel>
-
-            <!-- Enter project name -->
-            <DockPanel x:Name="ProjectName" Margin="8,10,0,0">
-               <StackPanel Orientation="Vertical">
-                    
-                    <TextBlock Text="Enter new Revit file name" 
-                            FontSize="14" 
-                            HorizontalAlignment="Left" 
-                            Margin="8,10,0,8"/>
-
-                    <WrapPanel Margin="8,0,0,8" Orientation="Horizontal" x:Name="WrapPanelTextBoxes">
-                        <TextBox x:Name ="TextBox0" Width="120" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[0], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox1" Width="40" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[1], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox2" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[2], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox3" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[3], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox4" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[4], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox5" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[5], Mode=TwoWay}" />
-                        <TextBlock Text=" - " VerticalAlignment="Center"/>
-                        <TextBox x:Name ="TextBox6" Width="40" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[6], Mode=TwoWay}" />
-                    </WrapPanel>
-
-                    <Grid>
+                <!-- Browse or select file path location -->
+                <DockPanel>
+                    <Grid Margin="8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>  <!-- Adjust the width for the first column -->
-                            <ColumnDefinition Width="*" />    <!-- Fill remaining space for the second column -->
+                            <ColumnDefinition Width="*"/> 
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>    
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
-                            <RowDefinition Height="Auto" /> 
+                            <RowDefinition Height="*" /> 
                             <RowDefinition Height="Auto" /> 
                         </Grid.RowDefinitions>
 
-                        <TextBlock Margin="8,10,0,0" Grid.Row="1" Grid.ColumnSpan="2" Text = "Example Name: SH22XXX-01XXD-DAR-AL-AL-M3-AR-0001.rvt"/>
-                        <TextBlock Margin="8,0,0,0" Grid.Row="2" Height = "10" Grid.ColumnSpan="2" Text =" "/>
-                        <TextBlock Margin="8,0,0,0" Grid.Row="3" Grid.Column="0" Text="PRJNUM" /> <TextBlock Grid.Row="3" Grid.Column="1" Text=" - Project Number(12 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="4" Grid.Column="0" Text="ORG" /> <TextBlock Grid.Row="4" Grid.Column="1" Text=" -  Organization(3-6 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="5" Grid.Column="0" Text="FUN" /> <TextBlock Grid.Row="5" Grid.Column="1" Text=" -  Functional Breakdown(2 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="6" Grid.Column="0" Text="SPA" /> <TextBlock Grid.Row="6" Grid.Column="1" Text=" -  Spatial Breakdown(2 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="7" Grid.Column="0" Text= "FOR" /> <TextBlock Grid.Row="7" Grid.Column="1" Text=" -  Form Type(2 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="8" Grid.Column="0" Text="DIS" /> <TextBlock Grid.Row="8" Grid.Column="1" Text=" -  Discipline Acronym(2 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="9" Grid.Column="0" Text="NUM" /> <TextBlock Grid.Row="9" Grid.Column="1" Text=" -  Number(4 characters)" />
-                        <TextBlock Margin="8,0,0,0" Grid.Row="10" Height = "10" Grid.ColumnSpan="2" Text =" "/>
-                        <TextBlock FontSize="14" TextWrapping="Wrap" Margin="8,0,0,0" Grid.Row="11" Grid.ColumnSpan="2" Text ="For further details refer to: BIM Manual and Project Procedures PRC-PM-08"/>
+                        <TextBlock x:Name="Description" FontSize="14" Text="Paste file path in text box or click on Browse button to select file path" TextWrapping="Wrap" Margin="10" Grid.Row="0" Grid.ColumnSpan="2"/>
+                        <TextBox x:Name="FolderPath" Height="25" Margin="10,4" IsReadOnly="False" Grid.Row="1" Grid.Column="0" VerticalContentAlignment="Center" Text ="P:\"/>
+                        <Button x:Name="BrowseButton" Content="Browse" Width="75" Height="25" Margin="10,4" Grid.Row="1" Grid.Column="1" />
                     </Grid>
-                </StackPanel>
-            </DockPanel>
-        </StackPanel>
+                </DockPanel>
 
-        <StackPanel DockPanel.Dock="Bottom" Margin="8,0,0,0">
-            <Grid Margin="8">
-                <Button x:Name="CreateButton" Content="Create" Height="25" Margin="0" />
-            </Grid>
-        </StackPanel>
-    </DockPanel>
+                <!-- Enter project name -->
+                <DockPanel x:Name="ProjectName" Margin="8,10,0,0">
+                <StackPanel Orientation="Vertical">
+                        
+                        <TextBlock Text="Enter new Revit file name" 
+                                FontSize="14" 
+                                HorizontalAlignment="Left" 
+                                Margin="8,10,0,8"/>
+
+                        <WrapPanel Margin="8,0,0,8" Orientation="Horizontal" x:Name="WrapPanelTextBoxes">
+                            <TextBox x:Name ="TextBox0" Width="120" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[0], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox1" Width="40" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[1], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox2" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[2], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox3" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[3], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox4" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[4], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox5" Width="30" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[5], Mode=TwoWay}" />
+                            <TextBlock Text=" - " VerticalAlignment="Center"/>
+                            <TextBox x:Name ="TextBox6" Width="40" HorizontalContentAlignment="Center" Text="{Binding Path=TextBoxList[6], Mode=TwoWay}" />
+                        </WrapPanel>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>  <!-- Adjust the width for the first column -->
+                                <ColumnDefinition Width="*" />    <!-- Fill remaining space for the second column -->
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>    
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Margin="8,10,0,0" Grid.Row="1" Grid.ColumnSpan="2" Text = "Example Name: SH22XXX-01XXD-DAR-AL-AL-M3-AR-0001.rvt"/>
+                            <TextBlock Margin="8,0,0,0" Grid.Row="2" Height = "10" Grid.ColumnSpan="2" Text =" "/>
+                            <TextBlock Margin="8,0,0,0" Grid.Row="3" Grid.Column="0" Text="PRJNUM" /> <TextBlock Grid.Row="3" Grid.Column="1" Text=" - Project Number   (12 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="4" Grid.Column="0" Text="ORG" /> <TextBlock Grid.Row="4" Grid.Column="1" Text=" -  Organization    (3-6 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="5" Grid.Column="0" Text="FUN" /> <TextBlock Grid.Row="5" Grid.Column="1" Text=" -  Functional Breakdown (2 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="6" Grid.Column="0" Text="SPA" /> <TextBlock Grid.Row="6" Grid.Column="1" Text=" -  Spatial Breakdown  (2 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="7" Grid.Column="0" Text= "FOR" /> <TextBlock Grid.Row="7" Grid.Column="1" Text=" -  Form Type     (2 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="8" Grid.Column="0" Text="DIS" /> <TextBlock Grid.Row="8" Grid.Column="1" Text=" -  Discipline Acronym    (2 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="9" Grid.Column="0" Text="NUM" /> <TextBlock Grid.Row="9" Grid.Column="1" Text=" -  Number         (4 characters)" />
+                            <TextBlock Margin="8,0,0,0" Grid.Row="10" Height = "10" Grid.ColumnSpan="2" Text =" "/>
+                            <TextBlock FontSize="14" TextWrapping="Wrap" Margin="8,0,0,0" Grid.Row="11" Grid.ColumnSpan="2" Text ="For further details refer to: BIM Manual and Project Procedures PRC-PM-08"/>
+                        </Grid>
+
+                        <TextBlock Text="Enter parameter values:" FontSize="14" HorizontalAlignment="Left" Margin="10,10,0,10"/>
+                        <Grid Margin = "10,10,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>  <!-- Adjust the width for the first column -->
+                                <ColumnDefinition Width="*" />    <!-- Fill remaining space for the second column -->
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>    
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                                <RowDefinition Height="Auto" /> 
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Project Name" Grid.Row="0" Grid.Column="0" HorizontalAlignment="Left" Margin="0,0,10,8"/>
+                            <TextBox x:Name ="P_Name" Grid.Row="0" Grid.Column="1" HorizontalContentAlignment="Left" Margin="10,0,10,8"/>
+                            <TextBlock Text="Project Address" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" Margin="0,0,10,8"/>
+                            <TextBox x:Name ="P_Address" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" HorizontalContentAlignment="Left" Margin="10,0,10,8"/>
+                            <TextBlock Text="Client Name" Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Margin="0,0,10,8"/>
+                            <TextBox x:Name ="C_Name" Grid.Row="2" Grid.Column="1" HorizontalContentAlignment="Left" Margin="10,0,10,8"/>
+                            <TextBlock Text="Building Name " Grid.Row="3" Grid.Column="0" HorizontalAlignment="Left" Margin="0,0,10,8"/>
+                            <TextBox x:Name ="B_Name" Grid.Row="3" Grid.Column="1" TextWrapping="Wrap" HorizontalContentAlignment="Left" Margin="10,0,10,8"/>
+                        </Grid>
+                    </StackPanel>
+                </DockPanel>
+            </StackPanel>
+            
+            <StackPanel DockPanel.Dock="Bottom" Margin="8,0,0,0">
+                <Grid Margin="8">
+                    <Button x:Name="CreateButton" Content="Create" Height="25" Margin="0" />
+                </Grid>
+            </StackPanel>
+
+        </DockPanel>
 </Window>

@@ -10,9 +10,9 @@ title: "Room Data Checks"
 
 tooltip:   
   en_us: >-
-    Version   =   0.1.0
+    Version   =   1.0.0
     
-    Date       =   20.09.2024
+    Date       =   18.11.2024
 
     ________________________________________________________________
     
@@ -46,6 +46,8 @@ tooltip:
     Changelog:
     
     
+    - [18.11.2024] v1.0.0 Release
+
     - [20.09.2024] v0.1.0 Beta Release
 
     - [24.07.2024] v0.x.x Early Development

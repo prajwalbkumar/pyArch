@@ -449,7 +449,7 @@ try:
         symbol = door.Symbol
         try:
             door_type = symbol.LookupParameter("Door_Type").AsString() # A Possible Attribute Error here. Door might not have Door Type Parameter sometimes.
-            if not door_type.upper() in doors_excluded:
+            if not door_type.upper() in doors_excluded and not "AP" in symbol.Family.Name and not "OP" in symbol.Family.Name:
                 # Check if the Door is Single Panel or More
                 if symbol.LookupParameter("Leaf_Number").AsInteger() == 1:
                     # Check Width and Height Requirements

@@ -20,7 +20,7 @@ tooltip:
     Description:
 
 
-    Creates a new workshared document using the DAR template.
+    Creates a new workshared document using the DAR template and fills the relevant parameters on the Landing page.
 
     _______________________________________________________________
 
@@ -30,6 +30,7 @@ tooltip:
 
     1. Specify the save location for the Revit file on your drive.
     2. Enter the desired name for the new Revit file.
+    3. Enter the other landing page values.
 
     ________________________________________________________________
     
@@ -49,9 +50,11 @@ tooltip:
 
 help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/initialization/dar-startup"
 
-# author: Prajwal B Kumar, 
-#         Roma Ramnani
+author: Prajwal B Kumar, 
+        Roma Ramnani
 
-authors:
-  - Prajwal B Kumar
-  - Roma Ramnani
+# authors:
+#   - John Doe
+#   - Jane Doe
+
+context: zero-doc

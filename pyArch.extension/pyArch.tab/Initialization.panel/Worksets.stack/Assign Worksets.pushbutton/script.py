@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 '''Assign elements to workset'''
 
-__Title__ = "Assign Worksets"
-__author__ = "prakritisrimal, abhiramnair"
+__title__ = "Assign Worksets"
+__author__ = "prakritisrimal"
 
 # Imports
 import math
@@ -26,6 +26,13 @@ doc = __revit__.ActiveUIDocument.Document  # Get the Active Document
 app = __revit__.Application  # Returns the Revit Application Object
 rvt_year = int(app.VersionNumber)
 output = script.get_output()
+
+
+report_data = []
+moved_data = []
+unowned_element_data = []
+workset_errors = []
+elements_count = []
 
 def get_model_category_names():
     """Retrieve a list of model categories that have elements in the model."""
@@ -86,9 +93,9 @@ def get_workset_names():
         print("Error retrieving wall names: {}".format(e))
         return []
     
-def move_elements_to_workset(elements, workset_name): 
+def move_elements_to_workset(elements, workset_name):  
     """Move elements to a specified workset."""
-
+    
     try:
         elements_new = []
         standard_worksets = (
@@ -178,14 +185,34 @@ def move_elements_to_workset(elements, workset_name):
             "Z_Link_URS"
         )
 
-        for element in elements:
+        # Filter out not owned elements
+        collected_elements = elements  # List of elements that the tool targets
+        owned_elements = []
+        unowned_elements = []
+        elements_to_checkout = List[ElementId]()
+
+        for element in collected_elements:
+            elements_to_checkout.Add(element.Id)
+
+        WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
+
+        for element in collected_elements:    
+            worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+            if worksharingStatus != CheckoutStatus.OwnedByOtherUser:
+                owned_elements.append(element)
+            else:
+                unowned_elements.append(element)
+
+        # Process owned elements
+        for element in owned_elements:  
             original_workset = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM).AsValueString()
-            
+
+            # Collect elements that need to be moved to the target workset
             if original_workset.lower() in standard_worksets.lower() and original_workset.lower() != workset_name.lower():
                 elements_new.append((element, original_workset))  # Store element with its original workset
 
         worksets = FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets()
-        
+
         def CheckExisting(workset_name):
             lower_workset_name = workset_name.lower()
             for workset in worksets:
@@ -199,42 +226,45 @@ def move_elements_to_workset(elements, workset_name):
                 if workset.Name.lower() == lower_workset_name:
                     return workset
 
+
+
+
+
         if not CheckExisting(workset_name):
-            output.print_md('## ⚠️ Workset "{}" not found. ☹️'.format(workset_name))  # Markdown error heading
-            return
+            workset_errors.append('⚠️ Workset "{}" not found. ☹️'.format(workset_name))
+        else:
+            target_workset = RevitValue(workset_name)
 
-        target_workset = RevitValue(workset_name)
-        report_data = []
-
-        with Transaction(doc, 'Move Elements to Workset') as t:
-            t.Start()
-            moved_elements = 0
-            
+            # Loop over all elements and move them to the new workset
             for element, original_workset in elements_new:
                 workset_param = element.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM)
                 if workset_param and not workset_param.IsReadOnly:
                     workset_param.Set(target_workset.Id.IntegerValue)
-                    moved_elements += 1
-                    report_data.append((output.linkify(element.Id), original_workset, workset_name))  # Record the element ID, original and new workset
+                    moved_elements = 1
+                    # Collect report data for the entire set of elements
+                    report_data.append((output.linkify(element.Id), original_workset, workset_name))  # Store element details
+                    moved_data.append(moved_elements)
 
-            t.Commit()
 
-        if report_data:
-            # Print the header for report data
-            output.print_md("## ⚠️ WORKSETS UPDATED")  # Markdown Heading 2 
-            output.print_md("---")  # Markdown Line Break
-            output.print_md('{} Element(s) Moved To Workset "{}".'.format(moved_elements, workset_name))
-            
-            # Create a table to display the report data
-            output.print_table(table_data=report_data, columns=["ELEMENT ID", "BEFORE", "AFTER"])  # Print a Table
-            
-            print("\n\n")
-            output.print_md("---")  # Markdown Line Break
-            runtime = time.time() - start_time
-            print("Script runtime: {:.2f} seconds".format(runtime))
-           
+
+                    
+
+        # Collect data for unowned elements
+        for element in unowned_elements:
+            try:
+                unowned_element_data.append([
+                    output.linkify(element.Id), 
+                    element.Category.Name.upper(), 
+                    "REQUEST OWNERSHIP", 
+                    WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner
+                ])
+            except Exception as e:
+                pass
+
     except Exception as e:
-        print ('Error moving elements to workset: {}'.format(e))
+        # Handle exceptions and log error details
+        print('Error moving elements to workset: {}'.format(e))
+
 
 def process (selected_option, selected_trade_option, selected_category_names, workset_name, doc):
     """Process selected categories and move elements to appropriate worksets."""
@@ -290,8 +320,12 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
 
                 if 'Columns' in selected_category_names:
                     columns = get_elements(BuiltInCategory.OST_Columns)
-                    if columns: 
-                        move_elements_to_workset(columns, 'AR_External')
+                    if columns:
+                        for column in columns:
+                            if 'SC' in column.Name or 'SS'in column.Name: 
+                                move_elements_to_workset(columns, 'AR_ST')
+                            else:
+                                move_elements_to_workset(columns, 'AR_External')
                     strl_columns = get_elements(BuiltInCategory.OST_StructuralColumns)
                     if strl_columns:
                         move_elements_to_workset(strl_columns, 'AR_ST')
@@ -316,12 +350,11 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            strl_param = floor.LookupParameter("Structural").AsBool()
-                            if strl_param == True:
+                            if 'SC' in floor.Name or 'SS' in floor.Name:
                                 move_elements_to_workset([floor], 'AR_ST')
-                                break
                             else:
                                 move_elements_to_workset([floor], 'AR_Floor')
+                           
 
                 if 'Fire Protection' in selected_category_names:
                     fps = get_elements(BuiltInCategory.OST_FireProtection)
@@ -521,20 +554,15 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     walls = get_elements(BuiltInCategory.OST_Walls)
                     if walls:
                         for wall in walls:
-                            wall_type = wall.WallType
-                            strl_param = wall.LookupParameter("Structural").AsBool()
-                            if strl_param == True:
-                                move_elements_to_workset([wall], 'AR_ST')
-                                break
-                            elif 'Ext' in wall.Name:
-                                move_elements_to_workset([wall], 'AR_External')
-                            elif 'Int' in wall.Name:
-                                move_elements_to_workset([wall], 'AR_Internal')
-                            elif 'WS_Ext' in wall.Name:
-                                move_elements_to_workset([wall], 'AR_Skin')
-                            if 'CW' in wall.Name:
-                                move_elements_to_workset([wall], 'AR_Internal')
-                                continue 
+                                if 'SC' in wall.Name or 'SS' in wall.Name:
+                                    move_elements_to_workset([wall], 'AR_ST')
+                                elif 'Ext' in wall.Name:
+                                    move_elements_to_workset([wall], 'AR_External')
+                                elif 'Int' in wall.Name:
+                                    move_elements_to_workset([wall], 'AR_Internal')
+                                elif 'WS_Ext' in wall.Name:
+                                    move_elements_to_workset([wall], 'AR_Skin')
+                                    continue 
 
                 if 'Windows' in selected_category_names:
                     windows = get_elements(BuiltInCategory.OST_Windows)
@@ -922,12 +950,11 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     floors = get_elements(BuiltInCategory.OST_Floors)
                     if floors:
                         for floor in floors:
-                            strl_param = floor.LookupParameter("Structural").AsBool()
-                            if strl_param == True:
+                            if 'SC' in floor.Name or 'SS'in floor.Name:
                                 move_elements_to_workset([floor], 'ARX_ST')
-                                break
                             else:
-                                move_elements_to_workset([floor], 'ARX_Floor')
+                              move_elements_to_workset([floor], 'ARX_Floor')
+                              
 
                 if 'Fire Protection' in selected_category_names:
                     fps = get_elements(BuiltInCategory.OST_FireProtection)
@@ -1065,20 +1092,15 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                     walls = get_elements(BuiltInCategory.OST_Walls)
                     if walls:
                         for wall in walls:
-                            wall_type = wall.WallType
-                            strl_param = wall.LookupParameter("Structural").AsBool()
-                            if strl_param == True:
+                            if 'SC' in wall.Name or 'SS' in wall.Name:
                                 move_elements_to_workset([wall], 'ARX_ST')
-                                break
                             elif 'Ext' in wall.Name:
                                 move_elements_to_workset([wall], 'ARX_External')
                             elif 'Int' in wall.Name:
                                 move_elements_to_workset([wall], 'ARX_Internal')
                             elif 'WS_Ext' in wall.Name:
-                                move_elements_to_workset([wall], 'ASK_Skin')
-                            if 'CW' in wall.Name:
-                                move_elements_to_workset([wall], 'ARX_Internal')
-                                continue 
+                                move_elements_to_workset([wall], 'ASX_Skin')
+
 
                 if 'Windows' in selected_category_names:
                     windows = get_elements(BuiltInCategory.OST_Windows)
@@ -1375,27 +1397,24 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
             if 'Columns' in selected_category_names:
                 columns = get_elements(BuiltInCategory.OST_Columns)
                 if columns:
-                    move_elements_to_workset([column], 'ARC_Columns')
+                    for column in columns:
+                        if 'SC' in column.Name:
+                            move_elements_to_workset([column], 'STR_Concrete')
+                        elif 'SS' in column.Name:
+                            move_elements_to_workset([column], 'STR_Steel')
+                        else:
+                            move_elements_to_workset([column], 'ARC_columns')
+
                 strl_columns = get_elements(BuiltInCategory.OST_StructuralColumns)
                 if strl_columns:
                     for strl_column in strl_columns:
-                        strl_column_type = strl_column.ColumnType
-                        if strl_column_type:
-                            strl_compound_structure = strl_column_type.GetCompoundStructure()
-                            if strl_compound_structure:
-                                for layer in strl_compound_structure.GetLayers():
-                                    material_id = layer.MaterialId
-                                    if material_id and material_id != ElementId.InvalidElementId:
-                                        material = doc.GetElement(material_id)
-                                        if material:
-                                            if any(keyword in material.Name for keyword in ['Concrete']):
-                                                move_elements_to_workset([strl_column], 'STR_Concrete')
-                                                break
-                                            if any (keyword in material.Name for keyword in ['Steel', 'ST', 'Metal', 'Alumnium']):
-                                                move_elements_to_workset([strl_column], 'STR_Steel')
-                                                break
-                                            else:
-                                                move_elements_to_workset([strl_column], 'ARC_Columns')
+                        if 'SC' in strl_column.Name:
+                            move_elements_to_workset([strl_column], 'STR_Concrete')
+                        elif 'SS' in strl_column.Name:
+                            move_elements_to_workset([strl_column], 'STR_Steel')
+                        else:
+                            move_elements_to_workset([strl_column], 'ARC_columns')
+                                        
 
 
             if 'Electrical Equipment' in selected_category_names or 'Electrical Fixtures' in selected_category_names or 'Lighting Fixtures' in selected_category_names:
@@ -1578,28 +1597,16 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
                 walls = get_elements(BuiltInCategory.OST_Walls)
                 if walls:
                     for wall in walls:
-                        wall_type = wall.WallType
-                        if wall_type:
-                            compound_structure = wall_type.GetCompoundStructure()
-                            if compound_structure:
-                                for layer in compound_structure.GetLayers():
-                                    material_id = layer.MaterialId
-                                    if material_id and material_id != ElementId.InvalidElementId:
-                                        material = doc.GetElement(material_id)
-                                        if material:
-                                            if any(keyword in material.Name for keyword in 'Concrete'):
-                                                move_elements_to_workset([wall], 'STR_Concrete')
-                                                break
-                                            if any(keyword in material.Name for keyword in 'Steel'):
-                                                move_elements_to_workset([wall], 'STR_Steel')
-                                                break
-                                            elif 'Ext' in wall.Name:
-                                                move_elements_to_workset([wall], 'ARC_External')
-                                            elif 'IDN' in wall.Name:
-                                                move_elements_to_workset([wall], 'ARC_Internal')
-                        if 'CW' in wall.Name:
+                        if 'SC' in wall.Name:
+                            move_elements_to_workset([strl_column], 'STR_Concrete')
+                        elif 'SS' in wall.Name:
+                            move_elements_to_workset([strl_column], 'STR_Steel')
+                        elif 'Ext' in wall.Name:
+                            move_elements_to_workset([wall], 'ARC_External')
+                        elif 'IDN' in wall.Name:
                             move_elements_to_workset([wall], 'ARC_Internal')
-                            continue 
+                            continue
+
 
             if 'Windows' in selected_category_names:
                 windows = get_elements(BuiltInCategory.OST_Windows)
@@ -1610,6 +1617,18 @@ def process (selected_option, selected_trade_option, selected_category_names, wo
 
     except Exception as e:
         forms.alert("An error occurred: {}".format(e))
+
+        #Record the end time and runtime
+        end_time = time.time()
+        runtime = end_time - start_time
+
+        # Log the error details
+        error_occured = "Error occurred: {}".format(str(e))
+        run_result = "Error"
+        element_count = 10
+
+        # Function to log run data in case of error
+        get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
 
 def main(): 
     if not doc.IsWorkshared:
@@ -1656,10 +1675,57 @@ def main():
             selected_category_names = forms.SelectFromList.show(category_names, multiselect=True, title='Select Categories', default=category_names)
 
             if selected_category_names:
-                process(selected_option, selected_trade_option, selected_category_names, workset_names, doc)
+
+                # Start a single transaction for all elements
+                with Transaction(doc, 'Move Elements to Workset') as t:
+                    t.Start()
+
+                    process(selected_option, selected_trade_option, selected_category_names, workset_names, doc)
+
+                    
+                    t.Commit()  # Commit the transaction once, after processing all elements
+                    total_moved_elements = sum(moved_data)
+
+
+
+                    # Record the end time
+                    end_time = time.time()
+                    runtime = end_time - start_time
+
+                    run_result = "Tool ran successfully"
+                    element_count = total_moved_elements
+                    error_occured = "Nil"
+                    get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+
+
+
+                    # 1. Display Workset Errors 
+                    if workset_errors:
+                        output.print_md("## ⚠️ Workset Errors")  # Markdown Heading 2
+                        output.print_md("---")  # Markdown Line Break
+                        for error in workset_errors:
+                            output.print_md(error)
+
+                    # 2. Display Moved Elements 
+                    if report_data:
+                        output.print_md("## ⚠️ WORKSETS UPDATED")  # Markdown Heading 2
+                        output.print_md("---")  # Markdown Line Break
+                        output.print_table(table_data=report_data, columns=["ELEMENT ID", "BEFORE", "AFTER"])
+
+                    # 3. Display Unowned Elements 
+                    if unowned_element_data:
+                        output.print_md("## ⚠️ Elements Skipped ☹️")  # Markdown Heading 2
+                        output.print_md("---")  # Markdown Line Break
+                        output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")
+                        output.print_table(table_data=unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"])
+
+
             else:
                 forms.alert('No categories selected. Exiting script.')
                 return
+            
+            
 
 
 

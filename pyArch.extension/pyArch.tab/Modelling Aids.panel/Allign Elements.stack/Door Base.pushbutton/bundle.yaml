@@ -37,20 +37,18 @@ tooltip:
     
     Changelog:
     
+    - [13.11.2024] v0.1.1 Custom Input for Access Panel Doors
     
     - [20.09.2024] v0.1.0 Host Doors
 
     - [27.08.2024] v0.x.x Early Development
+
     
     ________________________________________________________________
 
 # highlight: new
-# highlight: updated
+highlight: updated
 
-help_url: "https://dar-pune.gitbook.io/pyarch-tools-documentation/modelling-aids/door-base"
+help_url: "https://darcairo.sharepoint.com/:u:/r/sites/DARC/SitePages/Align-Door-Base.aspx?csf=1&web=1&share=Ee6BYv_pQyZKhFrbqA48lTgB5FeoZ9BASMMAMJmjFpBIcw&e=Q3AHTk"
 
 author: Prakriti Srimal
-
-# authors:
-#   - Prakriti Srimal
-#   - Prajwal B Kumar

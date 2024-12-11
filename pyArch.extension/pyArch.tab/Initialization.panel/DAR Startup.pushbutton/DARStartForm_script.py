@@ -4,26 +4,31 @@ __Title__ = "Create a new file"
 __author__ = "prajwalbkumar, romaramnani"
 
 import clr
-clr.AddReference("RevitAPI")
-from pyrevit import revit, forms, script
-import Autodesk.Revit.DB as DB
 import os
 import System
+import time
+
+clr.AddReference("RevitAPI")
+from Autodesk.Revit.DB import *
+import Autodesk.Revit.DB as DB
+from Autodesk.Revit.DB  import WorksharingUtils, RelinquishOptions
+from datetime           import datetime
+from Extract.RunData    import get_run_data
+from pyrevit            import forms, script
 
 # XAML WPF
 clr.AddReference('PresentationFramework')
+clr.AddReference('PresentationCore')
 clr.AddReference('WindowsBase')
 clr.AddReference("System.Windows.Forms")
 clr.AddReference('System.Windows')
-from System.Windows.Forms import FolderBrowserDialog, DialogResult, MessageBox, MessageBoxButtons
-#import webbrowser  # For hyperlink handling
-from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI import UIDocument
-from pyrevit import revit, forms, script
+from System.Windows.Forms import FolderBrowserDialog, DialogResult
 
 PATH_SCRIPT = os.path.dirname(__file__)
 app = __revit__.Application
 ui_doc = __revit__.ActiveUIDocument
+other_doc= ui_doc.Document
+other_file_path = other_doc.PathName
 
 class NewModel:
     def __init__(self):
@@ -34,7 +39,7 @@ class NewModel:
 
         # Load the XAML window
         self.window = forms.WPFWindow(path_xaml_file)
-
+        
         # Access the TextBox from the XAML file
         self.FolderPath = self.window.FindName('FolderPath')
 
@@ -84,11 +89,6 @@ class NewModel:
             print("WrapPanelTextBoxes not found")
         return values
 
-    '''def print_textbox_values(self):
-        print("Current TextBox values:")
-        for i, value in enumerate(self.TextBoxList):
-            print("TextBox[{}]: {}".format(i, value))'''
-
     def populate_textboxes(self):
         wrap_panel = self.window.FindName('WrapPanelTextBoxes')
         if wrap_panel:
@@ -116,9 +116,16 @@ class NewModel:
 
     def submit_button_click(self, sender, e):
         self.textbox_values = self.get_textbox_values()
+        self.project_name = self.window.FindName('P_Name')
+        self.project_address = self.window.FindName('P_Address')
+        self.client_name = self.window.FindName('C_Name')  
+        self.building_name = self.window.FindName('B_Name') 
         self.window.Close()
         #print('Retrieved values:', self.textbox_values)
-        
+    
+    #def on_closing(self, sender, e):
+    #    sys.exit(0)
+
 output = script.get_output()
 rvt_year = int(app.VersionNumber)
 
@@ -132,8 +139,28 @@ elif rvt_year == 2022:
 UI = NewModel()
 project_data = UI.window.DataContext
 
+# Record the start time
+start_time = time.time()
+manual_time = 500 
+if UI.FolderPath.Text == 'P:\\':
+    forms.alert('Project folder path not entered.')
+    script.exit()
+
+if not UI.textbox_values[0]:
+    forms.alert('Project number not entered.')
+    script.exit()
+
+if not UI.textbox_values[2]:
+    forms.alert('Building code not entered.')
+    script.exit()
+
+if not UI.textbox_values[5]:
+    forms.alert('Discipline code not entered.')
+    script.exit()
+
 if not UI.FolderPath and not UI.FolderPath.Text:
-   forms.alert('No folder selected.')
+    forms.alert('No folder selected.')
+    script.exit()
 
 file_name = '-'.join(UI.textbox_values) + ".rvt"
 if not file_name:
@@ -153,9 +180,9 @@ def check_and_handle_file(folder_path, file_name):
         save_path = os.path.join(folder_path, file_name)
         if os.path.isfile(save_path):
             result = forms.alert(msg="The file already exists. Do you want to replace it?",
-                                 title="File Exists",
-                                 yes=True,
-                                 no=True)
+                                title="File Exists",
+                                yes=True,
+                                no=True)
             if result:
                 return save_path  # Replace the file
             else:
@@ -172,6 +199,7 @@ if UI.FolderPath and file_name:
     #print("Save path:", save_path)
 else:
     print("Invalid folder path or file name")
+    script.exit()
 
 # Creating a new Document
 new_document = app.NewProjectDocument(template_path)
@@ -192,62 +220,99 @@ new_document.SaveAs(save_path, save_options)
 # Open and activate the saved document
 ui_doc.Application.OpenAndActivateDocument(save_path)
 
-# Give final prompt
-forms.alert("New Project File Created", title = "File Created", warn_icon=False)
-
-class LandingParameters:
-    def __init__(self):
-        path_xaml_file = os.path.join(PATH_SCRIPT, 'LandingParam.xaml')
-
-        # Load the XAML window
-        self.window = forms.WPFWindow(path_xaml_file)
-
-        self.window.SubmitButton.Click += self.on_submit_button_click
-        self.window.ShowDialog()
-
-    def on_submit_button_click(self, sender, args):
-        self.project_name = self.window.FindName('P_Name')
-        self.project_address = self.window.FindName('P_Address')
-        self.client_name = self.window.FindName('C_Name')  
-        self.building_name = self.window.FindName('B_Name') 
-        self.window.Close()
- 
 def update_landing_parameter():
-    ui_doc = __revit__.ActiveUIDocument
-    doc = ui_doc.Document  
+    try:
+        ui_doc1 = __revit__.ActiveUIDocument
+        doc = ui_doc1.Document  
 
-    params = LandingParameters()
+        t = Transaction(doc, "Fill Project Info")
+        t.Start()
+        
+        project_info = doc.ProjectInformation
+        param1 = project_info.get_Parameter(BuiltInParameter.PROJECT_NAME)
+        if param1:
+            if UI.project_name.Text:
+                param1.Set(UI.project_name.Text)
+            else:
+                pass
+        param2 = project_info.get_Parameter(BuiltInParameter.PROJECT_NUMBER)
+        if param2:
+            param2.Set(UI.textbox_values[0])
+        param3 = project_info.get_Parameter(BuiltInParameter.PROJECT_ADDRESS)
+        if param3:
+            if UI.project_address.Text:
+                param3.Set(UI.project_address.Text)
+            else:
+                pass
+            
+        param4 = project_info.get_Parameter(BuiltInParameter.CLIENT_NAME)
+        if param4:
+            if UI.client_name.Text:
+                param4.Set(UI.client_name.Text)
+            else:
+                pass
 
-    t = Transaction(doc, "Fill Project Info")
-    t.Start()
+        sheet_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Sheets).WhereElementIsNotElementType().ToElements()
+        if sheet_collector:
+            for sheet in sheet_collector:
+                param5 = sheet.LookupParameter("Building_Code")
+                if param5:
+                    param5.Set(UI.textbox_values[2])
+                param6 = sheet.LookupParameter("Building_Name")
+                if param6:
+                    if UI.building_name.Text:
+                        param6.Set(UI.building_name.Text)
+                    else: 
+                        pass
+                param7 = sheet.LookupParameter("Discipline")
+                if param7:
+                    param7.Set(UI.textbox_values[5])
+
+        t.Commit()
+        
+        options = RelinquishOptions(True)
+        transact_options = TransactWithCentralOptions()
+
+        WorksharingUtils.RelinquishOwnership(doc, options, transact_options)
+        doc.Save()
+
+        ui_doc.Application.OpenAndActivateDocument(other_file_path)
+        doc.Close(saveModified=True)
+
+        #DB.Document.Save(doc)
+        #DB.Document.Close(doc)
+        ui_doc.Application.OpenAndActivateDocument(save_path)
+
+        # Give final prompt
+        forms.alert("New Project File Created", title = "File Created", warn_icon=False)
+
+        # Record the end time
+        end_time = time.time()
+        runtime = end_time - start_time
+                
+        run_result = "Tool ran successfully"
     
-    project_info = doc.ProjectInformation
-    param1 = project_info.get_Parameter(BuiltInParameter.PROJECT_NAME)
-    if param1:
-        param1.Set(params.project_name.Text)
-    param2 = project_info.get_Parameter(BuiltInParameter.PROJECT_NUMBER)
-    if param2:
-        param2.Set(UI.textbox_values[0])
-    param3 = project_info.get_Parameter(BuiltInParameter.PROJECT_ADDRESS)
-    if param3:
-        param3.Set(params.project_address.Text)
-    param4 = project_info.get_Parameter(BuiltInParameter.CLIENT_NAME)
-    if param4:
-        param4.Set(params.client_name.Text)
+        element_count = 1
 
-    sheet_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Sheets).WhereElementIsNotElementType().ToElements()
-    if sheet_collector:
-        for sheet in sheet_collector:
-            param5 = sheet.LookupParameter("Building_Code")
-            if param5:
-                param5.Set(UI.textbox_values[2])
-            param6 = sheet.LookupParameter("Building_Name")
-            if param6:
-                param6.Set(params.building_name.Text)
-            param7 = sheet.LookupParameter("Discipline")
-            if param7:
-                param7.Set(UI.textbox_values[5])
+        error_occured ="Nil"
 
-    t.Commit()
+        get_run_data(__Title__, runtime, element_count, manual_time, run_result, error_occured)
+        raise ValueError("Simulated error for testing purposes.")
+
+    except Exception as e:
+       
+        t.RollBack()
+
+        print("Error occurred: {}".format(str(e)))
+        
+        # Record the end time
+        end_time = time.time()
+        runtime = end_time - start_time
+
+        error_occured = ("Error occurred: ", str(e))    
+        run_result = "Error"
+        element_count = 0
+        
+        get_run_data(__Title__, runtime, element_count, manual_time, run_result, error_occured)
 
 update_landing_parameter()

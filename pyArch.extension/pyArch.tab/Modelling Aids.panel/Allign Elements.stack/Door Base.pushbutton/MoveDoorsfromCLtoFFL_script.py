@@ -8,10 +8,18 @@ from pyrevit import script, forms, DB, revit
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import *
 from Autodesk.Revit.UI.Selection import Selection, ObjectType, ISelectionFilter
+from Extract.RunData import get_run_data
+import time
+from datetime import datetime
 from System.Collections.Generic import List
+# Record the start time
+start_time = time.time()
+manual_time = 10
+
 output = script.get_output()
 doc = __revit__.ActiveUIDocument.Document
 ui_doc = __revit__.ActiveUIDocument
+total_moved_elements = 0
 
 def feet_to_mm(feet):
     """Convert feet to millimeters."""
@@ -50,121 +58,128 @@ def create_level_pairs(cl_levels, ffl_levels):
     
     return level_pairs
 
-def move_doors_and_adjust_sill_heights():
+
     doc = revit.doc
 
 
-     # Define a selection filter class for walls
-    class DoorSelectionFilter(ISelectionFilter):
-        def AllowElement(self, element):
+    # Define a selection filter class for walls
+class DoorSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Doors):
+            return True
+        return False
+    
+    def AllowReference(self, ref, point):
+        return False
+
+target_doors = []
+
+
+#Pre-Selected Doors
+selection = ui_doc.Selection.GetElementIds()
+if len(selection)>0:
+    for id in selection:
+        element = doc.GetElement(id)
+        try:
             if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Doors):
-                return True
-            return False
-        
-        def AllowReference(self, ref, point):
-            return False
+                target_doors.append(element)
+        except:
+            continue
 
-    target_doors = []
+else:
+    #Custom selection 
+    selection_options = forms.alert("This Tool Aligns Door Base.",
+                                    title="Align Door Base - Select Doors", 
+                                    warn_icon=False, 
+                                    options=["Select All Doors", "Select Specific Doors"])
+    if not selection_options:
+        script.exit()
 
+    elif selection_options == "Select All Doors":
 
-    #Pre-Selected Doors
-    selection = ui_doc.Selection.GetElementIds()
-    if len(selection)>0:
-        for id in selection:
-            element = doc.GetElement(id)
-            try:
-                if element.Category.Id.IntegerValue == int(BuiltInCategory.OST_Doors):
-                    target_doors.append(element)
-            except:
-                continue
+        unique_door_names = set()
+        door_type_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType()
 
-    else:
-        #Custom selection 
-        selection_options = forms.alert("This Tool Aligns Door Base.",
-                                        title="Align Door Base - Select Doors", 
-                                        warn_icon=False, 
-                                        options=["Select All Doors", "Select Specific Doors"])
-        if not selection_options:
+        for door_type in door_type_collector:
+            door_name = door_type.LookupParameter("Family and Type").AsValueString()
+            if door_name:
+                unique_door_names.add(door_name)
+
+        if not unique_door_names:
+            #forms.alert("No doors found in the model. Exiting script.")
             script.exit()
 
-        elif selection_options == "Select All Doors":
+        sorted_door_names = sorted(unique_door_names)
+        
+        door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
+        
+        selected_door_names = forms.SelectFromList.show(sorted_door_names, multiselect=True, title='Select Doors to Align')
+        if not selected_door_names:
+            script.exit()
+        custom_sill_height_value = None
+        for selected_door_name in selected_door_names:
+            if 'AP' in selected_door_name:
+                custom_sill_height = forms.ask_for_string(default='Enter the Sill Height',  title='Sill Height for Access Panels')
+                try:
+                    custom_sill_height_value = int(custom_sill_height)
+                except:
+                    pass
+        for door in door_collector:
+            selected_door_name =  door.LookupParameter("Family and Type").AsValueString()
+            if selected_door_name in selected_door_names:
+                target_doors.append(door)
 
-            unique_door_names = set()
-            door_type_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType()
-
-            for door_type in door_type_collector:
-                door_name = door_type.Name
-                if door_name:
-                    unique_door_names.add(door_name)
-
-            if not unique_door_names:
-                #forms.alert("No doors found in the model. Exiting script.")
-                script.exit()
-
-            sorted_door_names = sorted(unique_door_names)
+    else:
+        # Prompt user to select doors
+        try:
+            choices = ui_doc.Selection
+            selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
             
-            door_collector = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).WhereElementIsNotElementType().ToElements()
-            
-            selected_door_names = forms.SelectFromList.show(sorted_door_names, multiselect=True, title='Select Doors to Align')
-            if not selected_door_names:
-                script.exit()
+            for selected_element in selected_elements:
+                door = doc.GetElement(selected_element.ElementId)
+                target_doors.append(door)
 
-            for door in door_collector:
-                if door.Name in selected_door_names:
-                    target_doors.append(door)
+        except:
+            script.exit()
 
-        else:
-            # Prompt user to select doors
-            try:
-                choices = ui_doc.Selection
-                selected_elements = choices.PickObjects(ObjectType.Element, DoorSelectionFilter(), "Select doors only")
-                
-                for selected_element in selected_elements:
-                    door = doc.GetElement(selected_element.ElementId)
-                    target_doors.append(door)
+# Filter out not owned element
+collected_elements = target_doors  #List of Elements that the Tool Targets
+owned_elements = []
+unowned_elements = []
+elements_to_checkout = List[ElementId]()
 
-            except:
-                script.exit()
+for element in collected_elements:
+    elements_to_checkout.Add(element.Id)
 
+WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
 
+for element in collected_elements:    
+    worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
+    if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
+        owned_elements.append(element)
+    else:
+        unowned_elements.append(element)
 
-    # Filter out not owned element
-    collected_elements = target_doors  #List of Elements that the Tool Targets
-    owned_elements = []
-    unowned_elements = []
-    elements_to_checkout = List[ElementId]()
-
-    for element in collected_elements:
-        elements_to_checkout.Add(element.Id)
-
-    WorksharingUtils.CheckoutElements(doc, elements_to_checkout)
-
-    for element in collected_elements:    
-        worksharingStatus = WorksharingUtils.GetCheckoutStatus(doc, element.Id)
-        if not worksharingStatus == CheckoutStatus.OwnedByOtherUser:
-            owned_elements.append(element)
-        else:
-            unowned_elements.append(element)
-
-    checkedout_target_doors = owned_elements
+checkedout_target_doors = owned_elements
 
 
-    
-    skipped_data  =  []
-    failed_data   =  []
 
-    levels = DB.FilteredElementCollector(doc).OfClass(DB.Level).ToElements()
-    
-    if not checkedout_target_doors or not levels:
-        forms.alert('No doors or levels found in the project.')
-        return
+skipped_data  =  []
+failed_data   =  []
 
-    tolerance = 100  # Tolerance range in millimeters
+levels = DB.FilteredElementCollector(doc).OfClass(DB.Level).ToElements()
 
-    cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
-    level_pairs = create_level_pairs(cl_levels, ffl_levels)
+if not checkedout_target_doors or not levels:
+    forms.alert('No doors or levels found in the project.')
+    script.exit()
 
+tolerance = 100  # Tolerance range in millimeters
+
+cl_levels, ffl_levels = get_cl_and_ffl_levels(levels)
+level_pairs = create_level_pairs(cl_levels, ffl_levels)
+try: 
     with revit.Transaction('Move Doors to Next Level'):
+
         for door in target_doors:
             door_level_id = door.LevelId
             door_name = door.Name
@@ -186,16 +201,22 @@ def move_doors_and_adjust_sill_heights():
                     current_sill_height_mm = feet_to_mm(sill_height_param.AsDouble())
 
                     if 'AP' in door.Symbol.Family.Name or 'Access Panel' in door_description:
-                        if current_sill_height_mm >= 0 and current_sill_height_mm < 150:
-                            sill_height_param.Set(mm_to_feet(150))
-                            print('Access panel door (door ID {}) Sill height adjusted to 150mm.'.format(output.linkify(door.Id)))
+                        #custom_sill_height = forms.ask_for_string(default='Enter the Sill Height',  title='Sill Height for Access Panels')
+                        if custom_sill_height_value is not None:
+                            sill_height_param.Set(custom_sill_height_value/304.8)
+                            #print('Access panel door (door ID {}) Sill height adjusted to 150mm.'.format(output.linkify(door.Id)))
                         else:
                             door_data = [ output.linkify(door.Id),
-                                         door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
-                                         "INSUFFICIENT SILL HEIGHT" ]
+                                            door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
+                                            "SILL HEIGHT VALUE NOT ENTERED" ]
                             skipped_data.append(door_data)
-
                         continue  # Skip further processing for this door
+                    if current_sill_height_mm < 0 or current_sill_height_mm >= 101:
+                        door_data = [ output.linkify(door.Id),
+                                        door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
+                                        "SILL HEIGHT" ]
+                        skipped_data.append(door_data)
+                        continue
 
             else:
                 # Process doors not at FFL level
@@ -214,28 +235,22 @@ def move_doors_and_adjust_sill_heights():
                         current_sill_height_mm = feet_to_mm(sill_height_param.AsDouble())
                         
                         if 'AP' in door.Symbol.Family.Name or 'Access Panel' in door_description:
-                            if current_sill_height_mm >= 0 and current_sill_height_mm < 150:
-                                sill_height_param.Set(mm_to_feet(150))
+                            if custom_sill_height_value is not None:
+                                sill_height_param.Set(custom_sill_height_value/304.8)
                                 level_param.Set(target_level_id)
-   
+                                total_moved_elements += 1
+
                             else:
                                 door_data = [ output.linkify(door.Id),
-                                         door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
-                                         "INSUFFICIENT SILL HEIGHT" ]
+                                            door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
+                                            "SILL HEIGHT" ]
                                 skipped_data.append(door_data)
                             continue
 
-                        if current_sill_height_mm < 0:
+                        if current_sill_height_mm < 0 or current_sill_height_mm >= 101:
                             door_data = [ output.linkify(door.Id),
-                                         door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
-                                         "INSUFFICIENT SILL HEIGHT" ]
-                            skipped_data.append(door_data)
-                            continue
-
-                        if current_sill_height_mm >= 101:
-                            door_data = [ output.linkify(door.Id),
-                                        door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
-                                        "INSUFFICIENT SILL HEIGHT" ]
+                                            door.Name,door.LookupParameter("Sill Height").AsValueString(),door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
+                                            "SILL HEIGHT" ]
                             skipped_data.append(door_data)
                             continue
 
@@ -245,6 +260,7 @@ def move_doors_and_adjust_sill_heights():
                         elif current_sill_height_mm > level_difference_mm:
                             new_sill_height_mm = current_sill_height_mm - level_difference_mm
                             sill_height_param.Set(mm_to_feet(new_sill_height_mm))
+                            
 
                         else:
                             door_data = [ output.linkify(door.Id),
@@ -254,59 +270,81 @@ def move_doors_and_adjust_sill_heights():
                             continue
 
                         level_param.Set(target_level_id)
+                        total_moved_elements += 1
                     else:
                         door_data = [ output.linkify(door.Id),
-                                     door.Name,door.LookupParameter("Sill Height").AsValueString(), door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
+                                        door.Name,door.LookupParameter("Sill Height").AsValueString(), door.get_Parameter(DB.BuiltInParameter.SCHEDULE_LEVEL_PARAM).AsValueString(), 
                                     "INSUFFICIENT PARAMETERS" ]
                         failed_data.append(door_data)
                         forms.alert('Door ID {} does not have the required parameters.'.format(output.linkify(door.Id)))
+    # Record the end time
+    end_time = time.time()
+    runtime = end_time - start_time
 
-    if skipped_data:
-        output.print_md("##⚠️ {} Completed. Some Doors were Skipped ☹️".format(__title__))
-        output.print_md("---")
-        output.print_md("❌ Some Doors were Skipped. Refer to the **Table Report** below for reference")
-        output.print_table(table_data=skipped_data, columns=["ELEMENT ID", "DOOR NAME", "SILL HEIGHT", "LEVEL", "ERROR CODE"])
-        output.print_md("---")
-        output.print_md("***✅ ERROR CODE REFERENCE***")
-        output.print_md("---")
-        output.print_md("**INSUFFICIENT SILL HEIGHT**      - sill height not in the range of 0 to 100 \n")
-        output.print_md("**EXCESSIVE LEVEL DIFFERENCE**    - Excessive Level Difference between CL and FFL \n")
-        output.print_md("---")
+    run_result = "Tool ran successfully"
+    element_count = total_moved_elements
+    error_occured = "Nil"
+    get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
 
-    if failed_data:
-        output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
-        output.print_md("---")
-        output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
-        output.print_table(table_data=failed_data, columns=["ELEMENT ID", "DOOR NAME", "SILL HEIGHT", "LEVEL", "ERROR CODE"])
-        output.print_md("---")
-        output.print_md("***✅ ERROR CODE REFERENCE***")
-        output.print_md("---")
-        output.print_md("**INSUFFICIENT PARAMETERS** - Door does not have the required parameters \n")
-        output.print_md("---")
+except Exception as e:
+    print ('Error moving elements to workset: {}'.format(e))
+    # Record the end time and runtime
+    end_time = time.time()
+    runtime = end_time - start_time
 
-    if unowned_elements:
-        unowned_element_data = []
-        for element in unowned_elements:
-            try:
-                unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
-            except:
-                pass
+    # Log the error details
+    error_occured = "Error occurred: {}".format(str(e))
+    run_result = "Error"
+    element_count = 1
 
-        output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
-        output.print_md("---") # Markdown Line Break
-        output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
-        output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
-        print("\n\n")
-        output.print_md("---") # Markdown Line Break
+    # Function to log run data in case of error
+    get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+    message = "An unexpected error occurred: " + str(e)
+    forms.alert(message, title="Error")
+
+if skipped_data:
+    output.print_md("##⚠️ {} Completed. Some Doors were Skipped ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ Some Doors were Skipped. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=skipped_data, columns=["ELEMENT ID", "DOOR NAME", "SILL HEIGHT", "LEVEL", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**SILL HEIGHT VALUE NOT ENTERED** - Missing input for Sill Height for Access Panel Doors \n")
+    output.print_md("**SILL HEIGHT** - Excessive Sill Height Value \n")
+    output.print_md("**EXCESSIVE LEVEL DIFFERENCE** - Excessive Level Difference between CL and FFL \n")
+    output.print_md("---")
+
+if failed_data:
+    output.print_md("##⚠️ {} Completed. Issues Found ☹️".format(__title__))
+    output.print_md("---")
+    output.print_md("❌ There are Issues in your Model. Refer to the **Table Report** below for reference")
+    output.print_table(table_data=failed_data, columns=["ELEMENT ID", "DOOR NAME", "SILL HEIGHT", "LEVEL", "ERROR CODE"])
+    output.print_md("---")
+    output.print_md("***✅ ERROR CODE REFERENCE***")
+    output.print_md("---")
+    output.print_md("**INSUFFICIENT PARAMETERS** - Door does not have the required parameters \n")
+    output.print_md("---")
+
+unowned_element_data = []
+if unowned_elements:
+    for element in unowned_elements:
+        try:
+            unowned_element_data.append([output.linkify(element.Id), element.Category.Name.upper(), "REQUEST OWNERSHIP", WorksharingUtils.GetWorksharingTooltipInfo(doc, element.Id).Owner])
+        except:
+            pass
+
+    output.print_md("##⚠️ Elements Skipped ☹️") # Markdown Heading 2
+    output.print_md("---") # Markdown Line Break
+    output.print_md("❌ Make sure you have Ownership of the Elements - Request access. Refer to the **Table Report** below for reference")  # Print a Line
+    output.print_table(table_data = unowned_element_data, columns=["ELEMENT ID", "CATEGORY", "TO-DO", "CURRENT OWNER"]) # Print a Table
+    print("\n\n")
+    output.print_md("---") # Markdown Line Break
 
 
-    if not skipped_data and not failed_data and not unowned_element_data:
-        output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
-        output.print_md("---")
+if not skipped_data and not failed_data and not unowned_element_data:
+    output.print_md("##✅ {} Completed. No Issues Found 😃".format(__title__))
+    output.print_md("---")
 
 
 
-
-
-if __name__ == '__main__':
-    move_doors_and_adjust_sill_heights()

@@ -10,9 +10,9 @@ title: "Door Nib"
 
 tooltip:   
   en_us: >-
-    Version   =   0.2.0
+    Version   =   1.0.0
     
-    Date       =   25.09.2024
+    Date       =   18.11.2024
 
     ________________________________________________________________
     
@@ -47,6 +47,8 @@ tooltip:
     Changelog:
     
     
+    - [18.11.2024] v1.0.0 Added OP and AP Exception
+
     - [25.09.2024] v0.2.0 Rounding Doors Nibs
     
     - [20.09.2024] v0.1.0 Updates Selected Doors

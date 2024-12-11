@@ -7,12 +7,29 @@ __author__ = "prajwalbkumar - prakritisrimal"
 # Import Libraries
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.ApplicationServices import *
-from Autodesk.Revit.UI import UIDocument
+from Autodesk.Revit.UI import UIDocument, TaskDialog, TaskDialogCommonButtons
 from pyrevit import revit, forms, script
 import csv
 import os
+import math
+import time
+from datetime import datetime
+from Extract.RunData import get_run_data
+from Autodesk.Revit.DB import WorksharingUtils
+from System.Collections.Generic import List
+
+
+# Record the start time
+start_time = time.time()
+manual_time = 300
 
 script_dir = os.path.dirname(__file__)
+ui_doc = __revit__.ActiveUIDocument
+doc = __revit__.ActiveUIDocument.Document  # Get the Active Document
+app = __revit__.Application  # Returns the Revit Application Object
+rvt_year = int(app.VersionNumber)
+output = script.get_output()
+
 
 # Read all the Rows from the CSV Files as Lists
 def readfile(selected_option):
@@ -95,6 +112,7 @@ if not doc.IsWorkshared:
         forms.alert("File not Workshared - Create a Workshared Model First!", title='Script Cancelled')
         script.exit()
 
+
 # Prompt user for trade selection
 ops = ['DAR', 'DAEP', 'NEOM']
 selected_option = forms.SelectFromList.show(
@@ -116,8 +134,33 @@ else:
         script.exit()
 
     # Create worksets within a transaction
-    with revit.Transaction("Create Workset"):
-        count = create_worksets(doc, workset_names)
+    try:
+        with Transaction(doc, 'Create Workset') as t:
+            t.Start()
+            count = create_worksets(doc, workset_names)
+            t.Commit()
+
+            # Record the end time
+            end_time = time.time()
+            runtime = end_time - start_time
+            run_result = "Tool ran successfully"
+            element_count = count
+            error_occured = "Nil"
+            get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
+
+    except Exception as e:
+        print ('Error moving elements to workset: {}'.format(e))
+        # Record the end time and runtime
+        end_time = time.time()
+        runtime = end_time - start_time
+
+        # Log the error details
+        error_occured = "Error occurred: {}".format(str(e))
+        run_result = "Error"
+        element_count = count
+
+        # Function to log run data in case of error
+        get_run_data(__title__, runtime, element_count, manual_time, run_result, error_occured)
 
     # Display a message with the results
     message = str(count) + " Worksets Created for " + selected_option
